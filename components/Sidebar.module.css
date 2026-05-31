@@ -1,0 +1,86 @@
+.sidebar {
+  width: 280px;
+  height: 100vh;
+  background: #CD5C5C;
+  /* Set to user provided light red */
+  display: flex;
+  flex-direction: column;
+  padding: 2.5rem 2rem;
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 100;
+  box-shadow: 4px 0 15px rgba(0, 0, 0, 0.03);
+}
+
+.logoContainer {
+  margin-bottom: 4rem;
+}
+
+.logo {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: #121F1B;
+  margin: 0;
+  letter-spacing: -1.5px;
+  font-family: var(--font-fraunces), serif;
+  line-height: 0.9;
+}
+
+.tagline {
+  font-size: 0.8rem;
+  color: white;
+  /* Changed to white for better legibility on red */
+  margin-top: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  font-family: var(--font-geist-mono), monospace;
+}
+
+.navLinks {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1.8rem;
+}
+
+.navLinks a {
+  text-decoration: none;
+  color: #121F1B;
+  font-size: 1.2rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  display: inline-block;
+}
+
+.navLinks a:hover {
+  color: white;
+  transform: translateX(8px);
+}
+
+.bottomSection {
+  margin-top: auto;
+}
+
+.ctaButton {
+  width: 100%;
+  padding: 1.2rem;
+  background: #121F1B;
+  border: none;
+  border-radius: 14px;
+  color: white;
+  font-weight: 700;
+  font-size: 1.05rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 0 #091310;
+}
+
+.ctaButton:hover {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 #091310;
+}

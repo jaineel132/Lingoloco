@@ -1,0 +1,299 @@
+.container {
+  min-height: 100vh;
+  background-color: transparent; /* Assuming layout.tsx handles the main #F4EBD9 background */
+  color: #1A1A1A;
+  padding: 8rem 2rem 4rem 2rem; /* Added generous top padding to clear the 1rem fixed navbar */
+  font-family: var(--font-geist-sans), sans-serif;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 3.5rem;
+  animation: fadeIn 0.8s ease-out;
+}
+
+.title {
+  font-family: var(--font-fraunces), serif;
+  font-size: 3.5rem;
+  font-weight: 800;
+  color: #097C87; /* Branded teal color */
+  margin-bottom: 0.5rem;
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  font-size: 1.25rem;
+  color: #555;
+  font-weight: 500;
+  font-family: var(--font-geist-mono), monospace;
+  opacity: 0.8;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 2rem;
+  max-width: 1400px; /* Increased width to match navbar max-width */
+  width: 96%;
+  margin: 0 auto;
+}
+
+/* Base Card Style with Organic / Match style */
+.card {
+  background: #FFFFFF;
+  border-radius: 30px; /* More rounded to match pill-shaped buttons */
+  padding: 2.5rem;
+  box-shadow: 0 8px 32px rgba(9, 124, 135, 0.04);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  overflow: hidden;
+  position: relative;
+  border: 1px solid rgba(9, 124, 135, 0.1);
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 40px rgba(9, 124, 135, 0.12);
+}
+
+/* League Section */
+.leagueCard {
+  grid-column: span 12;
+  background: linear-gradient(135deg, #097C87 0%, #159cAA 100%);
+  color: #F4EBD9; /* Matches the beige */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: none;
+}
+
+.leagueInfo h2 {
+  font-size: 2.8rem;
+  font-weight: 800;
+  margin-bottom: 0.8rem;
+  font-family: var(--font-fraunces), serif;
+}
+
+.leagueInfo p {
+  font-size: 1.15rem;
+  opacity: 0.95;
+  font-family: var(--font-geist-sans), sans-serif;
+}
+
+.leagueBadge {
+  width: 130px;
+  height: 130px;
+  background: rgba(244, 235, 217, 0.15);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 4rem;
+  box-shadow: inset 0 0 20px rgba(244, 235, 217, 0.3);
+  backdrop-filter: blur(10px);
+}
+
+/* Action Cards */
+.duelCard {
+  grid-column: span 6;
+  background: #e6f0ed; /* Soft minty/teal tint */
+  color: #097C87;
+  border-color: rgba(9, 124, 135, 0.15);
+}
+
+.groupCard {
+  grid-column: span 6;
+  background: rgba(244, 235, 217, 0.6); /* Slightly darker beige */
+  color: #097C87;
+  border-color: rgba(9, 124, 135, 0.15);
+}
+
+.actionCardInner {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.actionIcon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.actionCardInner h3 {
+  font-size: 1.8rem;
+  font-weight: 800;
+  margin-bottom: 0.8rem;
+  font-family: var(--font-fraunces), serif;
+}
+
+.actionCardInner p {
+  font-size: 1.05rem;
+  opacity: 0.85;
+  margin-bottom: 2rem;
+  flex-grow: 1;
+  color: #333;
+}
+
+.actionBtn {
+  background: #097C87;
+  border: 2px solid transparent;
+  color: #F4EBD9;
+  padding: 0.8rem 1.8rem;
+  border-radius: 100px;
+  font-weight: 700;
+  font-size: 1.05rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  align-self: flex-start;
+  box-shadow: 0 4px 15px rgba(9, 124, 135, 0.2);
+}
+
+.actionBtn:hover {
+  background: transparent;
+  color: #097C87;
+  border: 2px solid #097C87;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(9, 124, 135, 0.3);
+}
+
+/* Tournaments */
+.tournamentCard {
+  grid-column: span 12;
+  background: #054d54; /* Deep forest teal */
+  color: #F4EBD9;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: none;
+}
+
+.tournamentCard h3 {
+  font-size: 2rem;
+  font-family: var(--font-fraunces), serif;
+  color: #F4EBD9;
+  margin-bottom: 0.5rem;
+}
+
+.tournamentTimer {
+  background: rgba(244, 235, 217, 0.1);
+  padding: 0.8rem 1.8rem;
+  border-radius: 100px;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 1.25rem;
+  letter-spacing: 2px;
+  color: #F4EBD9;
+  border: 1px solid rgba(244, 235, 217, 0.3);
+}
+
+/* Leaderboards */
+.leaderboardCard {
+  grid-column: span 6;
+  padding: 0;
+  background: #FFFFFF;
+}
+
+.leaderboardHeader {
+  padding: 1.8rem 2rem;
+  border-bottom: 1px solid rgba(9, 124, 135, 0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(244, 235, 217, 0.1);
+  border-radius: 30px 30px 0 0;
+}
+
+.leaderboardHeader h3 {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #097C87;
+  font-family: var(--font-fraunces), serif;
+}
+
+.leaderboardList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.leaderboardItem {
+  display: flex;
+  align-items: center;
+  padding: 1.2rem 2rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  transition: background 0.2s;
+}
+
+.leaderboardItem:hover {
+  background: rgba(9, 124, 135, 0.02);
+}
+
+.leaderboardItem:last-child {
+  border-bottom: none;
+}
+
+.rank {
+  font-weight: 700;
+  font-size: 1.2rem;
+  color: #888;
+  width: 35px;
+  font-family: var(--font-geist-mono), monospace;
+}
+
+.rank1 { color: #097C87; font-size: 1.4rem; }
+.rank2 { color: #159cAA; }
+.rank3 { color: #4ECDC4; }
+
+.avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #e6f0ed;
+  margin-right: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  color: #097C87;
+  border: 1px solid rgba(9, 124, 135, 0.2);
+}
+
+.playerName {
+  flex-grow: 1;
+  font-weight: 600;
+  color: #1A1A1A;
+  font-size: 1.1rem;
+}
+
+.playerScore {
+  font-weight: 700;
+  color: #097C87;
+  font-family: var(--font-geist-mono), monospace;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 968px) {
+  .grid {
+    grid-template-columns: 1fr;
+    width: 90%;
+  }
+  .duelCard, .groupCard, .leaderboardCard, .leagueCard, .tournamentCard {
+    grid-column: span 1;
+  }
+  .leagueCard {
+    flex-direction: column;
+    text-align: center;
+    gap: 1.5rem;
+  }
+  .tournamentCard {
+    flex-direction: column;
+    text-align: center;
+    gap: 1.2rem;
+  }
+  .actionBtn {
+    align-self: flex-start;
+  }
+}

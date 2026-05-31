@@ -1,0 +1,304 @@
+.container {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #F4EBD9;
+  overflow: hidden; /* Prevent scrolling entirely */
+}
+
+.topSection {
+  background-color: #F4EBD9;
+  padding-top: 18vh;
+  padding-bottom: 2vh;
+  flex: 0 0 auto;
+  text-align: center;
+  z-index: 2;
+}
+
+.content {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.title {
+  font-family: var(--font-fraunces), serif;
+  font-size: 4.5rem;
+  font-weight: 500;
+  line-height: .95;
+  color: #097C87;
+  margin-bottom: 1.5rem;
+  letter-spacing: -2px;
+}
+
+.description {
+  font-family: var(--font-geist-mono), 'Courier New', monospace;
+  font-size: 0.9rem;
+  line-height: 1.8;
+  color: #097C87;
+  margin-bottom: 2.5rem;
+  text-transform: lowercase;
+  letter-spacing: 0.5px;
+  border: none;
+  padding: 0;
+}
+
+.shopButton {
+  background: transparent;
+  border: 1.5px solid #097C87;
+  /* Organic hand-drawn oval */
+  border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
+  padding: 0.8rem 3rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #097C87;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: var(--font-fraunces), serif;
+  display: inline-block;
+}
+
+.shopButton:hover {
+  background: #2b2b2b;
+  color: #F4EBD9;
+  transform: translateY(-2px);
+}
+
+.imageContainer {
+  position: relative;
+  width: 100%;
+  flex: 1 1 0; /* Grow exactly to bottom border of viewport */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #4A6E78;
+  overflow: hidden;
+}
+
+.waveSvg {
+  position: absolute;
+  top: -1px;
+  left: 0;
+  width: 100vw;
+  height: clamp(60px, 8vw, 150px);
+  z-index: 10;
+  pointer-events: none;
+}
+
+.heroBackdrop {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 15% 20%, rgba(255, 214, 102, 0.28), transparent 35%),
+    radial-gradient(circle at 85% 25%, rgba(8, 145, 178, 0.3), transparent 38%),
+    radial-gradient(circle at 55% 85%, rgba(255, 255, 255, 0.2), transparent 42%),
+    linear-gradient(140deg, #1f5e6b 0%, #3f7a83 40%, #2f6270 100%);
+}
+
+.languageCloud {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  min-height: 260px;
+  padding: 3.4rem 0.1rem 0.9rem;
+}
+
+.languageChip {
+  position: absolute;
+  background: rgba(255, 250, 241, 0.94);
+  border: 1px solid rgba(12, 85, 95, 0.14);
+  border-radius: 24px;
+  padding: 0.7rem 0.85rem 0.65rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  min-height: 74px;
+  box-shadow: 0 10px 22px rgba(8, 34, 41, 0.16);
+  backdrop-filter: blur(2px);
+}
+
+.chipText {
+  font-family: var(--font-fraunces), serif;
+  font-size: 1.02rem;
+  font-weight: 600;
+  line-height: 1.15;
+  color: #164d57;
+}
+
+.chipLabel {
+  margin-top: 0.4rem;
+  font-family: var(--font-geist-mono), 'Courier New', monospace;
+  font-size: 0.67rem;
+  letter-spacing: 0.06em;
+  color: #1f7180;
+  text-transform: uppercase;
+}
+
+.languageChip:nth-child(1) {
+  left: 0.4%;
+  top: 16%;
+  min-width: 170px;
+  min-height: 102px;
+  background: rgba(255, 241, 210, 0.95);
+}
+
+.languageChip:nth-child(2) {
+  left: 18%;
+  top: 42%;
+  min-width: 132px;
+  min-height: 74px;
+  background: rgba(255, 232, 200, 0.95);
+}
+
+.languageChip:nth-child(3) {
+  left: 31%;
+  top: 18%;
+  min-width: 190px;
+  min-height: 108px;
+  background: rgba(224, 243, 233, 0.95);
+}
+
+.languageChip:nth-child(4) {
+  left: 49%;
+  top: 47%;
+  min-width: 144px;
+  min-height: 82px;
+  background: rgba(255, 247, 231, 0.95);
+}
+
+.languageChip:nth-child(5) {
+  left: 63%;
+  top: 22%;
+  min-width: 126px;
+  min-height: 70px;
+  background: rgba(236, 244, 228, 0.95);
+}
+
+.languageChip:nth-child(6) {
+  left: 74.5%;
+  top: 52%;
+  min-width: 162px;
+  min-height: 94px;
+  background: rgba(255, 237, 220, 0.95);
+}
+
+.languageChip:nth-child(7) {
+  left: 7%;
+  top: 63%;
+  min-width: 118px;
+  min-height: 66px;
+  background: rgba(248, 239, 227, 0.95);
+}
+
+.languageChip:nth-child(8) {
+  left: 20.5%;
+  top: 67%;
+  min-width: 178px;
+  min-height: 102px;
+  background: rgba(221, 236, 247, 0.93);
+}
+
+.languageChip:nth-child(9) {
+  left: 41%;
+  top: 67%;
+  min-width: 158px;
+  min-height: 88px;
+  background: rgba(255, 248, 214, 0.95);
+}
+
+.languageChip:nth-child(10) {
+  left: 57%;
+  top: 71%;
+  min-width: 142px;
+  min-height: 80px;
+  background: rgba(226, 244, 236, 0.95);
+}
+
+.languageChip:nth-child(11) {
+  left: 70%;
+  top: 15%;
+  min-width: 172px;
+  min-height: 98px;
+  background: rgba(255, 234, 214, 0.95);
+}
+
+.languageChip:nth-child(12) {
+  right: 0.3%;
+  left: auto;
+  top: 31%;
+  min-width: 108px;
+  min-height: 64px;
+  background: rgba(246, 238, 228, 0.95);
+}
+
+.languageChip:nth-child(13) {
+  right: 2.4%;
+  left: auto;
+  top: 73%;
+  min-width: 138px;
+  min-height: 78px;
+  background: rgba(224, 238, 247, 0.93);
+}
+
+.languageChip:nth-child(14) {
+  left: 51%;
+  top: 8%;
+  min-width: 116px;
+  min-height: 66px;
+  background: rgba(255, 243, 223, 0.95);
+}
+
+.languageChip:nth-child(1) .chipText,
+.languageChip:nth-child(3) .chipText,
+.languageChip:nth-child(8) .chipText,
+.languageChip:nth-child(11) .chipText {
+  font-size: 1.34rem;
+}
+
+.languageChip:nth-child(2) .chipText,
+.languageChip:nth-child(7) .chipText,
+.languageChip:nth-child(12) .chipText,
+.languageChip:nth-child(14) .chipText {
+  font-size: 0.92rem;
+}
+
+@media (max-width: 768px) {
+  .title { font-size: 3.5rem; }
+  .description { font-size: 0.9rem; padding: 0 1rem; }
+  .topSection { padding-top: 12vh; }
+  .languageCloud {
+    width: 100%;
+    min-height: 390px;
+    padding: 3rem 0.08rem 0.8rem;
+  }
+
+  .languageChip {
+    padding: 0.62rem 0.72rem 0.56rem;
+    border-radius: 18px;
+  }
+
+  .languageChip:nth-child(1) { left: 0.8%; top: 10%; min-width: 150px; min-height: 90px; }
+  .languageChip:nth-child(2) { left: 54%; top: 6%; min-width: 118px; min-height: 66px; }
+  .languageChip:nth-child(3) { left: 8%; top: 35%; min-width: 160px; min-height: 96px; }
+  .languageChip:nth-child(4) { left: 60%; top: 26%; min-width: 128px; min-height: 76px; }
+  .languageChip:nth-child(5) { left: 70%; top: 45%; min-width: 112px; min-height: 62px; }
+  .languageChip:nth-child(6) { left: 12%; top: 63%; min-width: 148px; min-height: 84px; }
+  .languageChip:nth-child(7) { left: 56%; top: 62%; min-width: 106px; min-height: 60px; }
+  .languageChip:nth-child(8) { left: 2%; top: 82%; min-width: 154px; min-height: 86px; }
+  .languageChip:nth-child(9) { left: 41%; top: 82%; min-width: 136px; min-height: 76px; }
+  .languageChip:nth-child(10) { right: 0.7%; left: auto; top: 76%; min-width: 114px; min-height: 66px; }
+  .languageChip:nth-child(11) { left: 34%; top: 49%; min-width: 146px; min-height: 84px; }
+  .languageChip:nth-child(12) { right: 0.7%; left: auto; top: 20%; min-width: 96px; min-height: 56px; }
+  .languageChip:nth-child(13) { left: 27%; top: 22%; min-width: 124px; min-height: 72px; }
+  .languageChip:nth-child(14) { right: 1.1%; left: auto; top: 58%; min-width: 104px; min-height: 58px; }
+
+  .languageChip {
+    min-height: 66px;
+  }
+
+  .chipText {
+    font-size: 0.95rem;
+  }
+}

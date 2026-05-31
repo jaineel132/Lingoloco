@@ -1,0 +1,125 @@
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 2rem;
+  background: rgba(244, 235, 217, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  position: fixed;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 96%;
+  max-width: 1400px;
+  border-radius: 100px;
+  z-index: 100;
+  box-shadow: 0 8px 32px rgba(9, 124, 135, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  font-family: inherit;
+}
+
+.logo a {
+  font-size: 1.8rem;
+  font-weight: 900;
+  color: #097C87;
+  text-decoration: none;
+  text-align: center;
+  line-height: 1;
+  letter-spacing: -1.2px;
+  display: inline-block;
+  font-family: var(--font-fraunces), serif;
+}
+
+.centerLinks {
+  display: flex;
+  gap: 2.2rem;
+  align-items: center;
+}
+
+.centerLinks a {
+  text-decoration: none;
+  color: #097C87;
+  font-weight: 500;
+  font-size: 1rem;
+  letter-spacing: 0.2px;
+  transition: all 0.3s ease;
+  font-family: var(--font-geist-mono), monospace;
+  opacity: 0.8;
+  position: relative;
+  text-transform: capitalize;
+}
+
+.centerLinks a:hover {
+  opacity: 1;
+  color: #097C87;
+}
+
+.centerLinks a::after {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 2px;
+  bottom: -4px;
+  left: 50%;
+  background-color: #097C87;
+  transition: all 0.3s ease;
+  transform: translateX(-50%);
+}
+
+.centerLinks a:hover::after {
+  width: 100%;
+}
+
+.rightLinks {
+  display: flex;
+  gap: 1.2rem;
+  align-items: center;
+}
+
+.textLink {
+  text-decoration: none;
+  color: #097C87;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+  font-family: var(--font-geist-sans), sans-serif;
+  opacity: 0.8;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+.textLink:hover {
+  opacity: 1;
+  transform: translateY(-1px);
+}
+
+.ctaButton {
+  background: #097C87;
+  color: #F4EBD9;
+  padding: 0.7rem 1.8rem;
+  border-radius: 100px;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 0.95rem;
+  font-family: var(--font-geist-sans), sans-serif;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(9, 124, 135, 0.25);
+  border: 1.5px solid transparent;
+}
+
+.ctaButton:hover {
+  background: transparent;
+  color: #097C87;
+  border: 1.5px solid #097C87;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(9, 124, 135, 0.35);
+}
+
+@media (max-width: 968px) {
+  .centerLinks { display: none; }
+  .navbar { padding: 0.8rem 1.5rem; width: 95%; }
+  .rightLinks { gap: 1rem; }
+}

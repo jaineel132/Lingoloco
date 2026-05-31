@@ -1,0 +1,489 @@
+.container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #F4EBD9;
+  font-family: var(--font-geist-sans), sans-serif;
+  padding-top: 6.5rem;
+}
+
+.topBar {
+  padding: 1.5rem 2rem;
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  background: transparent;
+}
+
+.backBtn {
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: #666;
+  padding: 0.5rem;
+  transition: color 0.2s;
+}
+
+.backBtn:hover {
+  color: #333;
+}
+
+.progressTrack {
+  flex: 1;
+  height: 12px;
+  background: #F0F0F0;
+  border-radius: 12px;
+  overflow: hidden;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: 12px;
+  transition: width 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275), background-color 0.4s ease;
+}
+
+.contentWrapper {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+}
+
+.stepContainer {
+  max-width: 650px;
+  width: 100%;
+  animation: slideFade 0.5s ease forwards;
+}
+
+@keyframes slideFade {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.title {
+  font-size: 2.2rem;
+  font-weight: 800;
+  text-align: center;
+  margin-bottom: 2.5rem;
+  color: #1a1a1a;
+  letter-spacing: -0.5px;
+  font-family: var(--font-fraunces), serif;
+}
+
+.title span {
+  color: var(--theme-color);
+}
+
+.optionsGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.optionCard {
+  background: white;
+  border: 2px solid #e5e5e5;
+  border-radius: 20px;
+  padding: 1.5rem 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.02);
+}
+
+.optionCard:hover {
+  transform: translateY(-4px) scale(1.01);
+  border-color: color-mix(in srgb, var(--theme-color) 40%, #ccc);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.06);
+}
+
+.optionCard.selected {
+  border-color: var(--theme-color);
+  background-color: color-mix(in srgb, var(--theme-color) 8%, #ffffff);
+  box-shadow: 0 10px 30px -5px color-mix(in srgb, var(--theme-color) 40%, transparent);
+}
+
+.emoji {
+  font-size: 2.2rem;
+}
+
+.optionText {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.timeGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.timeBtn {
+  background: white;
+  border: 2px solid #e5e5e5;
+  border-radius: 40px;
+  padding: 1.2rem 2.5rem;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #555;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  font-family: inherit;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.02);
+}
+
+.timeBtn:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--theme-color) 40%, #ccc);
+}
+
+.timeBtn.selected {
+  border-color: var(--theme-color);
+  color: var(--theme-color);
+  background-color: color-mix(in srgb, var(--theme-color) 8%, #ffffff);
+  transform: scale(1.05);
+}
+
+.actionRow {
+  margin-top: 3.5rem;
+  display: flex;
+  justify-content: center;
+}
+
+.continueBtn {
+  background: var(--theme-color);
+  color: white;
+  border: none;
+  padding: 1.2rem 4rem;
+  font-size: 1.15rem;
+  font-weight: 700;
+  border-radius: 100px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 8px 25px -8px var(--theme-color);
+  font-family: inherit;
+}
+
+.continueBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+  filter: grayscale(0.5);
+}
+
+.continueBtn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 15px 35px -10px var(--theme-color);
+}
+
+/* Reminder Setup Screen */
+.reminderCard {
+  background: white;
+  border-radius: 28px;
+  padding: 3rem 2.5rem;
+  border: 2px solid #e5e5e5;
+  text-align: center;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.04);
+}
+
+.toggleRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2.5rem;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 56px;
+  height: 32px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #ddd;
+  transition: .4s;
+  border-radius: 34px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 24px;
+  width: 24px;
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
+  transition: .4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  border-radius: 50%;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+input:checked + .slider {
+  background-color: var(--theme-color);
+}
+
+input:checked + .slider:before {
+  transform: translateX(24px);
+}
+
+.timePicker {
+  border: 2px solid #e5e5e5;
+  padding: 1.2rem 2rem;
+  border-radius: 16px;
+  font-size: 1.8rem;
+  font-family: var(--font-geist-mono), monospace;
+  font-weight: 700;
+  color: var(--theme-color);
+  outline: none;
+  transition: border-color 0.2s;
+  text-align: center;
+  background: color-mix(in srgb, var(--theme-color) 4%, #ffffff);
+}
+
+.timePicker:focus {
+  border-color: var(--theme-color);
+}
+
+.summaryBox {
+  background: white;
+  border-radius: 24px;
+  padding: 2.5rem;
+  border: 2px solid color-mix(in srgb, var(--theme-color) 30%, transparent);
+  text-align: left;
+  font-size: 1.2rem;
+  line-height: 2.2;
+  margin-bottom: 2rem;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.04);
+}
+
+.summaryBox strong {
+  color: var(--theme-color);
+  display: inline-block;
+  width: 130px;
+}
+
+.successIcon {
+  font-size: 6rem;
+  margin-bottom: 1.5rem;
+  animation: bounceScale 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes bounceScale {
+  0% { transform: scale(0) rotate(-20deg); }
+  50% { transform: scale(1.1) rotate(10deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+
+.successCard {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.roadmapShell {
+  width: 100%;
+  max-width: 1240px;
+  display: grid;
+  gap: 1.5rem;
+  margin: 0 auto;
+}
+
+.roadmapHero {
+  background: linear-gradient(135deg, rgba(255,255,255,0.96), rgba(255,255,255,0.82));
+  border: 1px solid rgba(9, 124, 135, 0.10);
+  border-radius: 36px;
+  padding: 2.4rem;
+  box-shadow: 0 18px 60px rgba(9, 124, 135, 0.08);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.roadmapEyebrow {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--theme-color);
+  margin-bottom: 0.6rem;
+}
+
+.roadmapTitle {
+  margin: 0;
+  font-family: var(--font-fraunces), serif;
+  font-size: clamp(2.6rem, 4vw, 4rem);
+  line-height: 1.02;
+  color: #1a1a1a;
+  letter-spacing: -1px;
+}
+
+.roadmapSubtitle {
+  margin: 0.9rem 0 0;
+  max-width: 58ch;
+  color: #5b5b5b;
+  font-size: 1.02rem;
+  line-height: 1.7;
+}
+
+.roadmapActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem;
+  margin-top: 1.5rem;
+  justify-content: center;
+}
+
+.roadmapPrimaryBtn,
+.roadmapSecondaryBtn,
+.roadmapQuickBtn {
+  appearance: none;
+  border: none;
+  border-radius: 999px;
+  font: inherit;
+  cursor: pointer;
+  transition: transform 0.22s ease, box-shadow 0.22s ease, background-color 0.22s ease, color 0.22s ease;
+}
+
+.roadmapPrimaryBtn {
+  background: var(--theme-color);
+  color: #fff;
+  padding: 1rem 1.4rem;
+  font-weight: 800;
+  box-shadow: 0 14px 28px -10px color-mix(in srgb, var(--theme-color) 70%, #000);
+}
+
+.roadmapSecondaryBtn {
+  background: #ffffff;
+  color: var(--theme-color);
+  border: 1.5px solid color-mix(in srgb, var(--theme-color) 26%, #ffffff);
+  padding: 1rem 1.4rem;
+  font-weight: 800;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+.roadmapPrimaryBtn:hover,
+.roadmapSecondaryBtn:hover,
+.roadmapQuickBtn:hover {
+  transform: translateY(-2px);
+}
+
+.roadmapGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.2rem;
+  align-items: stretch;
+}
+
+.roadmapCard {
+  background: rgba(255,255,255,0.92);
+  border-radius: 28px;
+  padding: 1.5rem;
+  border: 1px solid rgba(0,0,0,0.06);
+  box-shadow: 0 12px 36px rgba(0,0,0,0.04);
+  min-height: 230px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.roadmapCardLabel {
+  font-family: var(--font-geist-mono), monospace;
+  color: var(--theme-color);
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.roadmapMetric {
+  margin-top: 0.75rem;
+  font-size: 2.25rem;
+  font-weight: 900;
+  color: #1a1a1a;
+}
+
+.roadmapSubtle {
+  margin-top: 0.35rem;
+  color: #666;
+  line-height: 1.6;
+}
+
+.roadmapBarTrack {
+  height: 12px;
+  border-radius: 999px;
+  background: #eef3f3;
+  overflow: hidden;
+  margin-top: 1.2rem;
+}
+
+.roadmapBarFill {
+  height: 100%;
+  border-radius: 999px;
+}
+
+.roadmapFooter {
+  margin-top: 0.8rem;
+  color: #666;
+}
+
+.roadmapNextTitle {
+  margin-top: 0.75rem;
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: #1a1a1a;
+}
+
+.roadmapCompletion {
+  margin-top: 1rem;
+  color: var(--theme-color);
+  font-weight: 800;
+}
+
+.roadmapQuickList {
+  display: grid;
+  gap: 0.8rem;
+  margin-top: 1rem;
+}
+
+.roadmapQuickBtn {
+  background: #f8fcfc;
+  color: #1a1a1a;
+  border: 1px solid rgba(9, 124, 135, 0.10);
+  padding: 0.95rem 1rem;
+  text-align: left;
+  font-weight: 700;
+}
+
+@media (max-width: 960px) {
+  .roadmapGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .roadmapHero {
+    padding: 1.6rem;
+  }
+}
