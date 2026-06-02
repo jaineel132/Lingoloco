@@ -1,10 +1,11 @@
 'use client';
 
-import React from 'react';
+import React, { use } from 'react';
 import Link from 'next/link';
 import styles from '../../Roleplay.module.css';
 
-export default function RoleplayResult({ params }: { params: { id: string } }) {
+export default function RoleplayResult({ params }: { params: Promise<{ id: string }> }) {
+  const unwrappedParams = use(params);
   
   return (
     <div className={styles.pageWrapper}>

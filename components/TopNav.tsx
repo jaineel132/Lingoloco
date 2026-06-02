@@ -45,7 +45,7 @@ export default function TopNav() {
           <>
             <Link href="/login" className={styles.textLink}>Login</Link>
             <Link href="/signup" className={styles.textLink}>Sign up</Link>
-            <Link href="/start" className={styles.ctaButton}>Get Started</Link>
+            <Link href="/signup" className={styles.ctaButton}>Get Started</Link>
           </>
         )}
       </div>

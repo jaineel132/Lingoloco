@@ -1,5 +1,6 @@
 'use client';
 import React, { useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useSupabaseAuth } from '../../components/AuthProvider';
@@ -22,30 +23,46 @@ const LANGUAGES = [
 export default function Learn() {
   const router = useRouter();
   const { user, loading, accessToken } = useSupabaseAuth();
+  const [isCheckingOnboarding, setIsCheckingOnboarding] = useState(true);
 
   useEffect(() => {
-    if (!user) {
+    if (loading) {
       return;
     }
 
-    if (!accessToken) {
+    if (!user || !accessToken) {
+      setIsCheckingOnboarding(false);
       return;
     }
 
-    fetch('/api/dashboard', withSupabaseAuthHeaders(accessToken, { cache: 'no-store' }))
+    let isActive = true;
+
+    fetch('/api/user/profile', withSupabaseAuthHeaders(accessToken, { cache: 'no-store' }))
       .then((res) => res.json())
       .then((payload) => {
-        if (payload?.success) {
-          const targetLanguage = payload.data?.targetLanguage || 'es';
-          router.replace(`/learn/${targetLanguage}`);
+        if (!isActive) {
+          return;
+        }
+
+        if (payload?.success && payload.data?.courseId) {
+          router.replace(`/learn/${payload.data.courseId}`);
+        } else {
+          setIsCheckingOnboarding(false);
         }
       })
       .catch((error) => {
         console.error(error);
+        if (isActive) {
+          setIsCheckingOnboarding(false);
+        }
       });
+
+    return () => {
+      isActive = false;
+    };
   }, [accessToken, user, router]);
 
-  if (loading || user) {
+  if (loading || isCheckingOnboarding) {
     return (
       <div className={styles.container} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#097C87' }}>
         Loading languages...

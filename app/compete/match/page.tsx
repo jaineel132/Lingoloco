@@ -4,8 +4,10 @@ import { motion, useMotionValue, useTransform, AnimatePresence } from 'framer-mo
 import styles from './page.module.css';
 import { Shield, Zap, X, Check, ArrowLeft, Radar } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useSupabaseAuth } from '../../../components/AuthProvider';
 import { withSupabaseAuthHeaders } from '../../../lib/supabase/clientFetch';
+import { createBrowserClient } from '@/lib/supabase/browser';
 
 type RivalCard = {
   id: string;
@@ -21,6 +23,7 @@ type RivalCard = {
 
 type DuelNotification = {
   id: string;
+  userId?: string;
   senderEmail: string;
   senderName: string;
   senderImage: string;
@@ -30,15 +33,24 @@ type DuelNotification = {
   respondedAt: string | null;
 };
 
+type DuelRoomPayload = {
+  rivals: RivalCard[];
+  notifications: DuelNotification[];
+  language?: string;
+};
+
 const CARD_COLORS = ['#FF6B6B', '#4ECDC4', '#FFE66D', '#1A535C', '#EF476F', '#118AB2', '#06D6A0'];
 
 export default function MatchPage() {
-  const { accessToken } = useSupabaseAuth();
+  const router = useRouter();
+  const { accessToken, user } = useSupabaseAuth();
   const [cards, setCards] = useState<RivalCard[]>([]);
   const [notifications, setNotifications] = useState<DuelNotification[]>([]);
+  const [duelLanguage, setDuelLanguage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [sendingCardId, setSendingCardId] = useState<string | null>(null);
   const [statusText, setStatusText] = useState('');
+  const supabase = createBrowserClient();
 
   const pendingRequests = useMemo(
     () => notifications.filter((item) => item.status === 'pending'),
@@ -58,7 +70,7 @@ export default function MatchPage() {
       }
 
       const response = await fetch('/api/compete/duels', withSupabaseAuthHeaders(accessToken, { cache: 'no-store' }));
-      const payload = await response.json();
+      const payload = (await response.json()) as { success?: boolean; data?: DuelRoomPayload; error?: string };
 
       if (!response.ok || !payload?.success) {
         throw new Error(payload?.error || 'Failed to load duel data.');
@@ -66,11 +78,13 @@ export default function MatchPage() {
 
       setCards(Array.isArray(payload?.data?.rivals) ? payload.data.rivals : []);
       setNotifications(Array.isArray(payload?.data?.notifications) ? payload.data.notifications : []);
+      setDuelLanguage(String(payload?.data?.language || '').toUpperCase());
       setStatusText('');
     } catch (error: any) {
       setStatusText(error?.message || 'Failed to load duel data.');
       setCards([]);
       setNotifications([]);
+      setDuelLanguage('');
     } finally {
       setIsLoading(false);
     }
@@ -79,6 +93,32 @@ export default function MatchPage() {
   useEffect(() => {
     void loadDuelData();
   }, [accessToken]);
+
+  useEffect(() => {
+    if (!user?.id) {
+      return;
+    }
+
+    const channel = supabase
+      .channel(`duel-notifications:${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'duel_notifications',
+          filter: `userId=eq.${user.id}`,
+        },
+        () => {
+          void loadDuelData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [supabase, user?.id]);
 
   const sendChallenge = async (card: RivalCard) => {
     if (sendingCardId) {
@@ -150,6 +190,20 @@ export default function MatchPage() {
     void sendChallenge(card);
   };
 
+  const openDuelSession = (card: RivalCard) => {
+    const searchParams = new URLSearchParams({
+      name: card.name,
+      email: card.email,
+      rank: card.rank,
+      xp: String(card.xp),
+      lang: card.lang,
+      avatar: card.avatar,
+      image: card.image || '',
+    });
+
+    router.push(`/compete/duel/${card.id}?${searchParams.toString()}`);
+  };
+
   const handleLeftSwipe = (cardId: string) => {
     handleRemove(cardId);
     setStatusText('Skipped this rival.');
@@ -171,6 +225,14 @@ export default function MatchPage() {
       </div>
 
       <div className={styles.container}>
+        <div className={styles.roomHeader}>
+          <div>
+            <h2 className={styles.roomTitle}>Duel Room</h2>
+            <p className={styles.roomSubtitle}>Current players available for one-on-one requests</p>
+          </div>
+          <div className={styles.roomLanguageBadge}>{duelLanguage || 'ALL LANGUAGES'}</div>
+        </div>
+
         {/* Left Sidebar Layout */}
         <div className={styles.leftSidebar}>
          <div className={styles.sidebarCard}>
@@ -184,6 +246,27 @@ export default function MatchPage() {
 
       <div className={styles.mainContent}>
         {statusText ? <div className={styles.statusBar}>{statusText}</div> : null}
+
+        {!isLoading && cards.length > 0 && (
+          <div className={styles.duelRoomList}>
+            {cards.map((card) => (
+              <div key={card.id} className={styles.duelRoomRow}>
+                <div className={styles.duelRoomPlayer}>
+                  <div className={styles.duelRoomAvatar}>{card.avatar}</div>
+                  <div>
+                    <div className={styles.duelRoomName}>{card.name}</div>
+                    <div className={styles.duelRoomMeta}>{card.rank} • {card.xp.toLocaleString()} XP</div>
+                  </div>
+                </div>
+                <div className={styles.duelRoomLang}>{card.lang}</div>
+                <button type="button" className={styles.duelRoomSendBtn} onClick={() => handleRightSwipe(card)} disabled={sendingCardId === card.id}>
+                  {sendingCardId === card.id ? 'Sending...' : 'Send Duel Request'}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className={styles.cardsContainer}>
           <AnimatePresence>
             {cards.map((card, index) => (
@@ -210,8 +293,8 @@ export default function MatchPage() {
               <div className={styles.pulseIcon}>
                 <Radar size={64} color="#22c55e" />
               </div>
-              <h2>No rivals available</h2>
-              <p>Ask other learners to sign in, then refresh to challenge them.</p>
+              <h2>No rivals in this duel room</h2>
+              <p>Only learners with the same target language appear here. Ask them to set the same language and sign in, then refresh.</p>
               <button className={styles.refreshBtn} onClick={() => void loadDuelData()}>Refresh Search</button>
             </div>
           )}
@@ -222,6 +305,9 @@ export default function MatchPage() {
             <div className={styles.btnReject} onClick={() => handleLeftSwipe(activeCard.id)}>
               <X size={32} />
             </div>
+            <button type="button" className={styles.btnDuel} onClick={() => openDuelSession(activeCard)}>
+              DUEL
+            </button>
             <div className={styles.btnAccept} onClick={() => handleRightSwipe(activeCard)}>
               <Check size={32} />
             </div>

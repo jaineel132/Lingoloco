@@ -78,10 +78,13 @@ export async function GET() {
       return NextResponse.json({ success: false, error: 'User profile not found.' }, { status: 404, headers: noCacheHeaders() });
     }
 
+    const currentTargetLanguage = String(currentUser.targetLanguage || 'es').trim().toLowerCase();
+
     const { data: rivals, error: rivalsError } = await supabase
       .from('profiles')
       .select('id,name,email,image,targetLanguage,level,xp')
       .neq('email', currentUser.email)
+      .eq('targetLanguage', currentTargetLanguage)
       .order('xp', { ascending: false })
       .order('updatedAt', { ascending: false })
       .limit(20);
@@ -121,6 +124,7 @@ export async function GET() {
         success: true,
         data: {
           rivals: rivalCards,
+          language: currentTargetLanguage,
           notifications,
         },
       },

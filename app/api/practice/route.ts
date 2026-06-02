@@ -3,7 +3,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 type PracticeType = 'multiple_choice' | 'fill_in_the_blank' | 'matching' | 'reorder_sentence' | 'translation';
 
-const MODEL_CANDIDATES = ['gemini-2.5-flash'] as const;
+const MODEL_CANDIDATES = ['gemini-2.0-flash', 'gemini-1.5-flash'] as const;
 const RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504]);
 
 type PracticeRequest = {

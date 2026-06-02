@@ -1,0 +1,378 @@
+.wrapper {
+  min-height: 100vh;
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at top left, rgba(9, 124, 135, 0.18), transparent 30%),
+    radial-gradient(circle at top right, rgba(245, 158, 11, 0.15), transparent 32%),
+    linear-gradient(180deg, #f7fafb 0%, #fcf8f0 55%, #f6efe1 100%);
+  color: #17232a;
+  padding: 24px 24px 48px;
+}
+
+.glowA,
+.glowB {
+  position: absolute;
+  inset: auto;
+  width: 380px;
+  height: 380px;
+  border-radius: 50%;
+  filter: blur(28px);
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.glowA {
+  top: -120px;
+  left: -120px;
+  background: rgba(9, 124, 135, 0.24);
+}
+
+.glowB {
+  top: 80px;
+  right: -120px;
+  background: rgba(245, 158, 11, 0.18);
+}
+
+.topbar,
+.shell {
+  position: relative;
+  z-index: 1;
+  width: min(1180px, 100%);
+  margin: 0 auto;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.backBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 999px;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.84);
+  border: 1px solid rgba(9, 124, 135, 0.14);
+  color: #0f5f69;
+  font-weight: 800;
+  box-shadow: 0 14px 28px rgba(7, 38, 45, 0.08);
+}
+
+.topbarMeta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.badge,
+.language,
+.heroStat,
+.banner,
+.resultBanner,
+.vsPill,
+.finishBtn,
+.playerCard,
+.vsColumn,
+.loadingState {
+  box-shadow: 0 18px 40px rgba(7, 38, 45, 0.08);
+}
+
+.badge,
+.language {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 999px;
+  padding: 10px 14px;
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.badge {
+  background: rgba(9, 124, 135, 0.12);
+  color: #0f5f69;
+}
+
+.language {
+  background: rgba(255, 255, 255, 0.84);
+  border: 1px solid rgba(9, 124, 135, 0.12);
+  color: #4e5d65;
+}
+
+.shell {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: end;
+  padding: 28px;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(9, 124, 135, 0.12);
+}
+
+.kicker {
+  margin: 0 0 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #0f7b87;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.hero h1 {
+  margin: 0;
+  font-family: var(--font-fraunces), serif;
+  font-size: clamp(2rem, 5vw, 4rem);
+  line-height: 0.95;
+  color: #153039;
+}
+
+.heroCopy {
+  max-width: 720px;
+  margin: 12px 0 0;
+  color: #5c6a71;
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+.heroStat {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(9, 124, 135, 0.1), rgba(9, 124, 135, 0.04));
+  color: #0f5f69;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.banner,
+.resultBanner,
+.loadingState {
+  border-radius: 20px;
+  padding: 16px 18px;
+  border: 1px solid rgba(9, 124, 135, 0.12);
+  background: rgba(255, 255, 255, 0.92);
+  font-weight: 800;
+}
+
+.banner {
+  color: #0f5f69;
+}
+
+.resultBanner {
+  color: #24613f;
+  background: linear-gradient(135deg, rgba(30, 159, 87, 0.12), rgba(30, 159, 87, 0.06));
+}
+
+.arena {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 240px minmax(0, 1fr);
+  gap: 18px;
+  align-items: stretch;
+}
+
+.playerCard,
+.vsColumn,
+.loadingState {
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(9, 124, 135, 0.12);
+}
+
+.playerCard {
+  padding: 24px;
+}
+
+.playerHead {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #0f7b87, #1eb6c7);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  font-weight: 900;
+  flex-shrink: 0;
+}
+
+.opponentAvatar {
+  background: linear-gradient(135deg, #f59e0b, #fb7185);
+}
+
+.playerLabel {
+  margin: 0 0 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #7f8b91;
+  font-size: 0.74rem;
+  font-weight: 900;
+}
+
+.playerCard h2 {
+  margin: 0;
+  font-size: 1.6rem;
+  color: #18313a;
+}
+
+.playerSub {
+  margin: 6px 0 0;
+  color: #66757d;
+  font-weight: 700;
+}
+
+.score {
+  margin: 24px 0 18px;
+  padding: 18px 16px;
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(9, 124, 135, 0.06), rgba(9, 124, 135, 0.03));
+  border: 1px solid rgba(9, 124, 135, 0.1);
+  text-align: center;
+  font-size: clamp(3rem, 7vw, 5rem);
+  font-weight: 900;
+  color: #0f5f69;
+}
+
+.scoreControls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.scoreBtn,
+.scoreBtnPrimary,
+.finishBtn {
+  border: none;
+  border-radius: 18px;
+  padding: 14px 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, opacity 0.16s ease;
+}
+
+.scoreBtn {
+  background: #fff7f8;
+  color: #b23c4d;
+}
+
+.scoreBtnPrimary,
+.finishBtn {
+  background: linear-gradient(135deg, #0f7b87, #1eb6c7);
+  color: #fff;
+}
+
+.scoreBtn:hover,
+.scoreBtnPrimary:hover,
+.finishBtn:hover {
+  transform: translateY(-1px);
+}
+
+.vsColumn {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  padding: 22px;
+  text-align: center;
+}
+
+.vsPill {
+  width: 86px;
+  height: 86px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #0f7b87, #1eb6c7);
+  color: #fff;
+  font-size: 1.8rem;
+  font-weight: 900;
+}
+
+.vsNote,
+.vsHint {
+  margin: 0;
+  color: #66757d;
+  line-height: 1.5;
+}
+
+.finishBtn {
+  width: 100%;
+  padding: 16px 18px;
+  font-size: 1rem;
+}
+
+.finishBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.loadingState {
+  text-align: center;
+  color: #55666e;
+}
+
+@media (max-width: 1080px) {
+  .arena {
+    grid-template-columns: 1fr;
+  }
+
+  .vsColumn {
+    order: -1;
+  }
+}
+
+@media (max-width: 640px) {
+  .wrapper {
+    padding: 16px 16px 36px;
+  }
+
+  .topbar,
+  .hero {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .hero {
+    padding: 20px;
+  }
+
+  .playerCard {
+    padding: 18px;
+  }
+
+  .scoreControls {
+    grid-template-columns: 1fr;
+  }
+
+  .playerHead {
+    align-items: flex-start;
+  }
+}

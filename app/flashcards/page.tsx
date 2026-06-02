@@ -145,7 +145,7 @@ export default function FlashcardPage() {
 
         <div className={styles.contentZIndex}>
           <div className={styles.header}>
-            <Link href="/dashboard" className={styles.backBtn}>
+            <Link href="/dashboard/es" className={styles.backBtn}>
               <ArrowLeft size={24} />
             </Link>
             <div style={{ width: 48 }}></div>
@@ -157,7 +157,7 @@ export default function FlashcardPage() {
             <p className={styles.finishText}>You've successfully reviewed all your flashcards for today. Keep up the great work and your knowledge will grow!</p>
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
               <button className={styles.finishBtn} onClick={fetchDeck}>New AI Deck</button>
-              <Link href="/dashboard">
+              <Link href="/dashboard/es">
                 <button className={styles.finishBtn}>Back to Dashboard</button>
               </Link>
             </div>
@@ -175,7 +175,7 @@ export default function FlashcardPage() {
 
       <div className={styles.contentZIndex}>
         <div className={styles.header}>
-          <Link href="/dashboard" className={styles.backBtn}>
+          <Link href="/dashboard/es" className={styles.backBtn}>
             <ArrowLeft size={24} />
           </Link>
           <div style={{ textAlign: 'center' }}>
