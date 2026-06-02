@@ -224,154 +224,154 @@ export default function MatchPage() {
         <div style={{ width: 50, flexShrink: 0 }} /> {/* placeholder for centering */}
       </div>
 
-      <div className={styles.container}>
-        <div className={styles.roomHeader}>
-          <div>
-            <h2 className={styles.roomTitle}>Duel Room</h2>
-            <p className={styles.roomSubtitle}>Current players available for one-on-one requests</p>
-          </div>
-          <div className={styles.roomLanguageBadge}>{duelLanguage || 'ALL LANGUAGES'}</div>
+      <div className={styles.roomHeader}>
+        <div>
+          <h2 className={styles.roomTitle}>Duel Room</h2>
+          <p className={styles.roomSubtitle}>Current players available for one-on-one requests</p>
         </div>
+        <div className={styles.roomLanguageBadge}>{duelLanguage || 'ALL LANGUAGES'}</div>
+      </div>
 
+      <div className={styles.container}>
         {/* Left Sidebar Layout */}
         <div className={styles.leftSidebar}>
-         <div className={styles.sidebarCard}>
-           <h3>Your Stats</h3>
-           <p className={styles.sidebarSub}>Current Season</p>
-           <div className={styles.statRow}><span>Win Rate</span><strong>68%</strong></div>
-           <div className={styles.statRow}><span>Matches</span><strong>124</strong></div>
-           <div className={styles.statRow}><span>Current Streak</span><strong>🔥 5</strong></div>
-         </div>
-      </div>
-
-      <div className={styles.mainContent}>
-        {statusText ? <div className={styles.statusBar}>{statusText}</div> : null}
-
-        {!isLoading && cards.length > 0 && (
-          <div className={styles.duelRoomList}>
-            {cards.map((card) => (
-              <div key={card.id} className={styles.duelRoomRow}>
-                <div className={styles.duelRoomPlayer}>
-                  <div className={styles.duelRoomAvatar}>{card.avatar}</div>
-                  <div>
-                    <div className={styles.duelRoomName}>{card.name}</div>
-                    <div className={styles.duelRoomMeta}>{card.rank} • {card.xp.toLocaleString()} XP</div>
-                  </div>
-                </div>
-                <div className={styles.duelRoomLang}>{card.lang}</div>
-                <button type="button" className={styles.duelRoomSendBtn} onClick={() => handleRightSwipe(card)} disabled={sendingCardId === card.id}>
-                  {sendingCardId === card.id ? 'Sending...' : 'Send Duel Request'}
-                </button>
-              </div>
-            ))}
+          <div className={styles.sidebarCard}>
+            <h3>Your Stats</h3>
+            <p className={styles.sidebarSub}>Current Season</p>
+            <div className={styles.statRow}><span>Win Rate</span><strong>68%</strong></div>
+            <div className={styles.statRow}><span>Matches</span><strong>124</strong></div>
+            <div className={styles.statRow}><span>Current Streak</span><strong>🔥 5</strong></div>
           </div>
-        )}
+        </div>
 
-        <div className={styles.cardsContainer}>
-          <AnimatePresence>
-            {cards.map((card, index) => (
-              <MatchCard 
-                key={card.id} 
-                card={card} 
-                active={index === cards.length - 1} 
-                color={CARD_COLORS[index % CARD_COLORS.length]}
-                isBusy={sendingCardId === card.id}
-                onLeftSwipe={() => handleLeftSwipe(card.id)}
-                onRightSwipe={() => handleRightSwipe(card)}
-              />
-            ))}
-          </AnimatePresence>
+        <div className={styles.mainContent}>
+          {statusText ? <div className={styles.statusBar}>{statusText}</div> : null}
 
-          {isLoading && (
-            <div className={styles.loadingState}>
-              <p>Loading rivals and duel requests...</p>
+          {!isLoading && cards.length > 0 && (
+            <div className={styles.duelRoomList}>
+              {cards.map((card) => (
+                <div key={card.id} className={styles.duelRoomRow}>
+                  <div className={styles.duelRoomPlayer}>
+                    <div className={styles.duelRoomAvatar}>{card.avatar}</div>
+                    <div>
+                      <div className={styles.duelRoomName}>{card.name}</div>
+                      <div className={styles.duelRoomMeta}>{card.rank} • {card.xp.toLocaleString()} XP</div>
+                    </div>
+                  </div>
+                  <div className={styles.duelRoomLang}>{card.lang}</div>
+                  <button type="button" className={styles.duelRoomSendBtn} onClick={() => handleRightSwipe(card)} disabled={sendingCardId === card.id}>
+                    {sendingCardId === card.id ? 'Sending...' : 'Send Duel Request'}
+                  </button>
+                </div>
+              ))}
             </div>
           )}
-          
-          {!isLoading && cards.length === 0 && (
-            <div className={styles.noMoreCards}>
-              <div className={styles.pulseIcon}>
-                <Radar size={64} color="#22c55e" />
+
+          <div className={styles.cardsContainer}>
+            <AnimatePresence>
+              {cards.map((card, index) => (
+                <MatchCard 
+                  key={card.id} 
+                  card={card} 
+                  active={index === cards.length - 1} 
+                  color={CARD_COLORS[index % CARD_COLORS.length]}
+                  isBusy={sendingCardId === card.id}
+                  onLeftSwipe={() => handleLeftSwipe(card.id)}
+                  onRightSwipe={() => handleRightSwipe(card)}
+                />
+              ))}
+            </AnimatePresence>
+
+            {isLoading && (
+              <div className={styles.loadingState}>
+                <p>Loading rivals and duel requests...</p>
               </div>
-              <h2>No rivals in this duel room</h2>
-              <p>Only learners with the same target language appear here. Ask them to set the same language and sign in, then refresh.</p>
-              <button className={styles.refreshBtn} onClick={() => void loadDuelData()}>Refresh Search</button>
+            )}
+            
+            {!isLoading && cards.length === 0 && (
+              <div className={styles.noMoreCards}>
+                <div className={styles.pulseIcon}>
+                  <Radar size={64} color="#22c55e" />
+                </div>
+                <h2>No rivals in this duel room</h2>
+                <p>Only learners with the same target language appear here. Ask them to set the same language and sign in, then refresh.</p>
+                <button className={styles.refreshBtn} onClick={() => void loadDuelData()}>Refresh Search</button>
+              </div>
+            )}
+          </div>
+          
+          {activeCard && (
+            <div className={styles.controls}>
+              <div className={styles.btnReject} onClick={() => handleLeftSwipe(activeCard.id)}>
+                <X size={32} />
+              </div>
+              <button type="button" className={styles.btnDuel} onClick={() => openDuelSession(activeCard)}>
+                DUEL
+              </button>
+              <div className={styles.btnAccept} onClick={() => handleRightSwipe(activeCard)}>
+                <Check size={32} />
+              </div>
             </div>
           )}
         </div>
-        
-        {activeCard && (
-          <div className={styles.controls}>
-            <div className={styles.btnReject} onClick={() => handleLeftSwipe(activeCard.id)}>
-              <X size={32} />
-            </div>
-            <button type="button" className={styles.btnDuel} onClick={() => openDuelSession(activeCard)}>
-              DUEL
-            </button>
-            <div className={styles.btnAccept} onClick={() => handleRightSwipe(activeCard)}>
-              <Check size={32} />
-            </div>
+
+        {/* Right Sidebar Layout */}
+        <div className={styles.rightSidebar}>
+          <div className={`${styles.sidebarCard} ${styles.notificationsCard}`}>
+            <h3>Duel Notifications</h3>
+            <p className={styles.sidebarSub}>Requests sent to you</p>
+            {pendingRequests.length === 0 ? (
+              <p className={styles.emptyNote}>No pending duel requests right now.</p>
+            ) : (
+              <ul className={styles.notificationList}>
+                {pendingRequests.map((item) => (
+                  <li key={item.id}>
+                    <div className={styles.notificationHead}>
+                      <strong>{item.senderName}</strong>
+                      <span>{item.senderTargetLanguage || 'Any language'}</span>
+                    </div>
+                    <div className={styles.notificationActions}>
+                      <button type="button" className={styles.acceptMini} onClick={() => void respondToNotification(item.id, 'accept')}>
+                        Accept
+                      </button>
+                      <button type="button" className={styles.rejectMini} onClick={() => void respondToNotification(item.id, 'decline')}>
+                        Decline
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
-        )}
-      </div>
 
-      {/* Right Sidebar Layout */}
-      <div className={styles.rightSidebar}>
-         <div className={`${styles.sidebarCard} ${styles.notificationsCard}`}>
-           <h3>Duel Notifications</h3>
-           <p className={styles.sidebarSub}>Requests sent to you</p>
-           {pendingRequests.length === 0 ? (
-             <p className={styles.emptyNote}>No pending duel requests right now.</p>
-           ) : (
-             <ul className={styles.notificationList}>
-               {pendingRequests.map((item) => (
-                 <li key={item.id}>
-                   <div className={styles.notificationHead}>
-                     <strong>{item.senderName}</strong>
-                     <span>{item.senderTargetLanguage || 'Any language'}</span>
-                   </div>
-                   <div className={styles.notificationActions}>
-                     <button type="button" className={styles.acceptMini} onClick={() => void respondToNotification(item.id, 'accept')}>
-                       Accept
-                     </button>
-                     <button type="button" className={styles.rejectMini} onClick={() => void respondToNotification(item.id, 'decline')}>
-                       Decline
-                     </button>
-                   </div>
-                 </li>
-               ))}
-             </ul>
-           )}
-         </div>
-
-         <div className={styles.sidebarCard}>
-           <h3>Top Rivals</h3>
-           <p className={styles.sidebarSub}>Your highest win rates</p>
-           <ul className={styles.rivalList}>
-             <li>
-               <div className={styles.avatarMini} style={{background: '#FF6B6B'}}>J</div>
-               <div className={styles.rivalInfo}>
-                 <strong>Jake_M</strong>
-                 <span>8 Wins - 2 Losses</span>
-               </div>
-             </li>
-             <li>
-               <div className={styles.avatarMini} style={{background: '#4ECDC4'}}>L</div>
-               <div className={styles.rivalInfo}>
-                 <strong>Lina99</strong>
-                 <span>5 Wins - 4 Losses</span>
-               </div>
-             </li>
-             <li>
-               <div className={styles.avatarMini} style={{background: '#FFE66D'}}>T</div>
-               <div className={styles.rivalInfo}>
-                 <strong>Tom_FR</strong>
-                 <span>12 Wins - 10 Losses</span>
-               </div>
-             </li>
-           </ul>
-         </div>
-      </div>
+          <div className={styles.sidebarCard}>
+            <h3>Top Rivals</h3>
+            <p className={styles.sidebarSub}>Your highest win rates</p>
+            <ul className={styles.rivalList}>
+              <li>
+                <div className={styles.avatarMini} style={{background: '#FF6B6B'}}>J</div>
+                <div className={styles.rivalInfo}>
+                  <strong>Jake_M</strong>
+                  <span>8 Wins - 2 Losses</span>
+                </div>
+              </li>
+              <li>
+                <div className={styles.avatarMini} style={{background: '#4ECDC4'}}>L</div>
+                <div className={styles.rivalInfo}>
+                  <strong>Lina99</strong>
+                  <span>5 Wins - 4 Losses</span>
+                </div>
+              </li>
+              <li>
+                <div className={styles.avatarMini} style={{background: '#FFE66D'}}>T</div>
+                <div className={styles.rivalInfo}>
+                  <strong>Tom_FR</strong>
+                  <span>12 Wins - 10 Losses</span>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div>
       </div>
     </div>
   );

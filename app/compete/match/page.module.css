@@ -186,7 +186,8 @@
 
 .roomHeader {
   width: 100%;
-  margin-bottom: 1rem;
+  max-width: 1380px;
+  margin-bottom: 1.5rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
