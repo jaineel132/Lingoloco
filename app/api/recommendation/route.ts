@@ -89,7 +89,7 @@ export async function GET() {
       return NextResponse.json({ success: true, data: fallbackRecommendation(progress) }, { status: 200 });
     }
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
     const prompt = `You are a language-learning coach creating one recommended next step for a learner.
 Learner profile:
 - Name: ${userData.name}

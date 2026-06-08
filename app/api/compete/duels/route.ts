@@ -1,13 +1,22 @@
 import { NextResponse } from 'next/server';
-import { createSupabaseServerClient, getSupabaseUser } from '../../../../lib/supabase/server';
+import { createSupabaseServerClient, getSupabaseUserFromRequest } from '../../../../lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
 type DuelApiBody = {
   action?: 'send' | 'accept' | 'decline';
   targetEmail?: string;
+  targetUserId?: string;
   notificationId?: string;
 };
+
+function noCacheHeaders() {
+  return {
+    'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+    Pragma: 'no-cache',
+    Expires: '0',
+  };
+}
 
 type NotificationPayload = {
   id: string;
@@ -19,14 +28,6 @@ type NotificationPayload = {
   createdAt: string;
   respondedAt: string | null;
 };
-
-function noCacheHeaders() {
-  return {
-    'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-    Pragma: 'no-cache',
-    Expires: '0',
-  };
-}
 
 function normalizeNotifications(notifications: unknown): NotificationPayload[] {
   if (!Array.isArray(notifications)) {
@@ -54,94 +55,86 @@ function normalizeNotifications(notifications: unknown): NotificationPayload[] {
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
-export async function GET() {
-  try {
-    const user = await getSupabaseUser();
+export async function GET(request: Request) {
+  const user = await getSupabaseUserFromRequest(request);
 
-    if (!user?.id || !user.email) {
-      return NextResponse.json({ success: false, error: 'Unauthorized. Please log in.' }, { status: 401, headers: noCacheHeaders() });
-    }
-
-    const supabase = await createSupabaseServerClient();
-
-    const { data: currentUser, error: currentUserError } = await supabase
-      .from('profiles')
-      .select('id,name,email,image,targetLanguage')
-      .eq('id', user.id)
-      .maybeSingle();
-
-    if (currentUserError) {
-      throw currentUserError;
-    }
-
-    if (!currentUser?.email) {
-      return NextResponse.json({ success: false, error: 'User profile not found.' }, { status: 404, headers: noCacheHeaders() });
-    }
-
-    const currentTargetLanguage = String(currentUser.targetLanguage || 'es').trim().toLowerCase();
-
-    const { data: rivals, error: rivalsError } = await supabase
-      .from('profiles')
-      .select('id,name,email,image,targetLanguage,level,xp')
-      .neq('email', currentUser.email)
-      .eq('targetLanguage', currentTargetLanguage)
-      .order('xp', { ascending: false })
-      .order('updatedAt', { ascending: false })
-      .limit(20);
-
-    if (rivalsError) {
-      throw rivalsError;
-    }
-
-    const rivalCards = rivals
-      .filter((rival) => Boolean(rival.email))
-      .map((rival) => ({
-        id: rival.id,
-        name: rival.name || 'Learner',
-        email: rival.email as string,
-        bio: `Practicing ${String(rival.targetLanguage || 'languages').toUpperCase()} at ${rival.level || 'Beginner'} level.`,
-        rank: rival.level || 'Beginner',
-        xp: Number(rival.xp || 0),
-        lang: String(rival.targetLanguage || 'N/A').toUpperCase(),
-        avatar: (rival.name || 'L').trim().charAt(0).toUpperCase() || 'L',
-        image: rival.image || '',
-      }));
-
-    const { data: notificationRows, error: notificationError } = await supabase
-      .from('duel_notifications')
-      .select('*')
-      .eq('userId', currentUser.id)
-      .order('createdAt', { ascending: false });
-
-    if (notificationError) {
-      throw notificationError;
-    }
-
-    const notifications = normalizeNotifications(notificationRows);
-
-    return NextResponse.json(
-      {
-        success: true,
-        data: {
-          rivals: rivalCards,
-          language: currentTargetLanguage,
-          notifications,
-        },
-      },
-      { status: 200, headers: noCacheHeaders() }
-    );
-  } catch (error: any) {
-    console.error('Compete duels GET error:', error);
-    return NextResponse.json(
-      { success: false, error: `Failed to load duel data: ${error.message}` },
-      { status: 500, headers: noCacheHeaders() }
-    );
+  if (!user?.id || !user.email) {
+    return NextResponse.json({ success: false, error: 'Unauthorized. Please log in.' }, { status: 401, headers: noCacheHeaders() });
   }
+
+  const supabase = await createSupabaseServerClient();
+
+  const { data: currentUser, error: currentUserError } = await supabase
+    .from('profiles')
+    .select('id,name,email,image,targetLanguage')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  if (currentUserError) {
+    throw currentUserError;
+  }
+
+  if (!currentUser?.email) {
+    return NextResponse.json({ success: false, error: 'User profile not found.' }, { status: 404, headers: noCacheHeaders() });
+  }
+
+  const currentTargetLanguage = String(currentUser.targetLanguage || 'es').trim().toLowerCase();
+
+  const { data: rivals, error: rivalsError } = await supabase
+    .from('profiles')
+    .select('id,name,email,image,targetLanguage,level,xp')
+    .neq('email', currentUser.email)
+    .eq('targetLanguage', currentTargetLanguage)
+    .order('xp', { ascending: false })
+  .order('updatedAt', { ascending: false })
+  .limit(20);
+
+  if (rivalsError) {
+    throw rivalsError;
+  }
+
+  const rivalCards = rivals
+    .filter((rival) => Boolean(rival.email))
+    .map((rival) => ({
+      id: rival.id,
+      name: rival.name || 'Learner',
+      email: rival.email as string,
+      bio: `Practicing ${String(rival.targetLanguage || 'languages').toUpperCase()} at ${rival.level || 'Beginner'} level.`,
+      rank: rival.level || 'Beginner',
+      xp: Number(rival.xp || 0),
+      lang: String(rival.targetLanguage || 'N/A').toUpperCase(),
+      avatar: (rival.name || 'L').trim().charAt(0).toUpperCase() || 'L',
+      image: rival.image || '',
+    }));
+
+  const { data: notificationRows, error: notificationError } = await supabase
+    .from('duel_notifications')
+    .select('*')
+    .eq('userId', currentUser.id)
+    .order('createdAt', { ascending: false });
+
+  if (notificationError) {
+    throw notificationError;
+  }
+
+  const notifications = normalizeNotifications(notificationRows);
+
+  return NextResponse.json(
+    {
+      success: true,
+      data: {
+        rivals: rivalCards,
+        language: currentTargetLanguage,
+        notifications,
+      },
+    },
+    { status: 200, headers: noCacheHeaders() }
+  );
 }
 
 export async function POST(request: Request) {
   try {
-    const user = await getSupabaseUser();
+    const user = await getSupabaseUserFromRequest(request);
 
     if (!user?.id || !user.email) {
       return NextResponse.json({ success: false, error: 'Unauthorized. Please log in.' }, { status: 401, headers: noCacheHeaders() });
@@ -188,45 +181,69 @@ export async function POST(request: Request) {
         );
       }
 
-      const { data: existingPendingRows, error: existingPendingError } = await supabase
-        .from('duel_notifications')
-        .select('id')
-        .eq('userId', targetUser.id)
-        .eq('senderEmail', currentUser.email)
-        .eq('status', 'pending')
-        .limit(1);
+      const { data, error: rpcError } = await supabase.rpc('send_duel_request', {
+        p_sender_id: currentUser.id,
+        p_recipient_id: targetUser.id,
+        p_sender_email: currentUser.email,
+        p_sender_name: currentUser.name || 'Language Learner',
+        p_sender_image: currentUser.image || '',
+        p_sender_language: currentUser.targetLanguage || '',
+      });
 
-      if (existingPendingError) {
-        throw existingPendingError;
+      if (rpcError) {
+        console.error('send_duel_request RPC error:', rpcError);
+        throw rpcError;
       }
 
-      const existingPending = existingPendingRows && existingPendingRows.length > 0;
-
-      if (!existingPending) {
-        const { error: insertError } = await supabase.from('duel_notifications').insert({
-          userId: targetUser.id,
-          senderEmail: currentUser.email,
-          senderName: currentUser.name || 'Language Learner',
-          senderImage: currentUser.image || '',
-          senderTargetLanguage: currentUser.targetLanguage || '',
-          status: 'pending',
-        });
-
-        if (insertError) {
-          throw insertError;
-        }
-      }
+      const result = (data ?? {}) as Record<string, unknown>;
 
       return NextResponse.json(
         {
           success: true,
-          message: existingPending ? 'Challenge already pending for this learner.' : 'Challenge sent. Waiting for acceptance.',
+          message: String(result.message || 'Challenge processed.'),
+          alreadySent: Boolean(result.already_sent),
         },
         { status: 200, headers: noCacheHeaders() }
       );
     }
 
-    if (action === 'accept' || action === 'decline') {
+    if (action === 'accept') {
+      const notificationId = String(body.notificationId || '').trim();
+
+      if (!notificationId) {
+        return NextResponse.json({ success: false, error: 'notificationId is required.' }, { status: 400, headers: noCacheHeaders() });
+      }
+
+      const { data, error: rpcError } = await supabase.rpc('accept_duel_request', {
+        p_recipient_id: currentUser.id,
+        p_notification_id: notificationId,
+      });
+
+      if (rpcError) {
+        console.error('accept_duel_request RPC error:', rpcError);
+        throw rpcError;
+      }
+
+      const result = (data ?? {}) as Record<string, unknown>;
+
+      if (!result.success) {
+        return NextResponse.json(
+          { success: false, error: String(result.error || 'Failed to accept duel request.') },
+          { status: 400, headers: noCacheHeaders() }
+        );
+      }
+
+      return NextResponse.json(
+        {
+          success: true,
+          message: String(result.message || 'Duel request accepted.'),
+          roomId: result.room_id ? String(result.room_id) : undefined,
+        },
+        { status: 200, headers: noCacheHeaders() }
+      );
+    }
+
+    if (action === 'decline') {
       const notificationId = String(body.notificationId || '').trim();
 
       if (!notificationId) {
@@ -249,35 +266,8 @@ export async function POST(request: Request) {
       }
 
       if (notification.status !== 'pending') {
-        // Even if already responded, let's find the active room to return its ID so they can join it
-        let roomId: string | null = null;
-        if (action === 'accept') {
-          const { data: senderProfile } = await supabase
-            .from('profiles')
-            .select('id')
-            .eq('email', notification.senderEmail)
-            .maybeSingle();
-
-          if (senderProfile) {
-            const { data: existingRooms } = await supabase
-              .from('duel_rooms')
-              .select('id')
-              .or(`and(player1_id.eq.${senderProfile.id},player2_id.eq.${currentUser.id}),and(player1_id.eq.${currentUser.id},player2_id.eq.${senderProfile.id})`)
-              .neq('status', 'finished')
-              .limit(1);
-
-            if (existingRooms && existingRooms.length > 0) {
-              roomId = existingRooms[0].id;
-            }
-          }
-        }
-
         return NextResponse.json(
-          {
-            success: true,
-            message: `This request was already ${notification.status}.`,
-            roomId: roomId || undefined
-          },
+          { success: true, message: `This request was already ${notification.status}.` },
           { status: 200, headers: noCacheHeaders() }
         );
       }
@@ -285,7 +275,7 @@ export async function POST(request: Request) {
       const { error: updateError } = await supabase
         .from('duel_notifications')
         .update({
-          status: action === 'accept' ? 'accepted' : 'declined',
+          status: 'declined',
           respondedAt: new Date().toISOString(),
         })
         .eq('id', notificationId)
@@ -295,53 +285,10 @@ export async function POST(request: Request) {
         throw updateError;
       }
 
-      let roomId: string | null = null;
-
-      if (action === 'accept') {
-        const { data: senderProfile, error: senderError } = await supabase
-          .from('profiles')
-          .select('id, targetLanguage')
-          .eq('email', notification.senderEmail)
-          .maybeSingle();
-
-        if (senderError) throw senderError;
-        if (!senderProfile) {
-          throw new Error('Sender profile not found.');
-        }
-
-        const { data: existingRooms, error: existingRoomsError } = await supabase
-          .from('duel_rooms')
-          .select('id')
-          .or(`and(player1_id.eq.${senderProfile.id},player2_id.eq.${currentUser.id}),and(player1_id.eq.${currentUser.id},player2_id.eq.${senderProfile.id})`)
-          .neq('status', 'finished')
-          .limit(1);
-
-        if (existingRoomsError) throw existingRoomsError;
-
-        if (existingRooms && existingRooms.length > 0) {
-          roomId = existingRooms[0].id;
-        } else {
-          const { data: newRoom, error: createRoomError } = await supabase
-            .from('duel_rooms')
-            .insert({
-              player1_id: senderProfile.id,
-              player2_id: currentUser.id,
-              language: currentUser.targetLanguage || 'Spanish',
-              status: 'waiting',
-            })
-            .select('id')
-            .single();
-
-          if (createRoomError) throw createRoomError;
-          roomId = newRoom.id;
-        }
-      }
-
       return NextResponse.json(
         {
           success: true,
-          message: action === 'accept' ? 'Duel request accepted.' : 'Duel request declined.',
-          roomId: roomId || undefined,
+          message: 'Duel request declined.',
         },
         { status: 200, headers: noCacheHeaders() }
       );

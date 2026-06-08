@@ -12,11 +12,48 @@ const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { player1Id, player2Id, player1Score, player2Score, winnerId, loserId, language } = body;
+    const { player1Id, player2Id, player1Score, player2Score, language } = body;
 
-    if (!winnerId || !loserId) {
-      return NextResponse.json({ error: 'winnerId and loserId required' }, { status: 400 });
+    // Verify the caller is authenticated
+    const authHeader = req.headers.get('authorization') || '';
+    const accessToken = authHeader.toLowerCase().startsWith('bearer ')
+      ? authHeader.slice(7).trim()
+      : '';
+
+    if (!accessToken) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const supabaseAuth = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+      auth: { persistSession: false },
+      global: { headers: { Authorization: `Bearer ${accessToken}` } },
+    });
+
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Verify the caller is one of the players
+    if (user.id !== player1Id && user.id !== player2Id) {
+      return NextResponse.json({ error: 'You are not a participant in this match' }, { status: 403 });
+    }
+
+    if (!player1Id || !player2Id) {
+      return NextResponse.json({ error: 'player1Id and player2Id required' }, { status: 400 });
+    }
+
+    // Determine winner/loser server-side from scores (don't trust client)
+    const p1Score = Number(player1Score || 0);
+    const p2Score = Number(player2Score || 0);
+
+    if (p1Score === p2Score) {
+      return NextResponse.json({ error: 'Scores must not be tied' }, { status: 400 });
+    }
+
+    const p1Won = p1Score > p2Score;
+    const winnerId = p1Won ? player1Id : player2Id;
+    const loserId = p1Won ? player2Id : player1Id;
 
     // 1) Fetch both users' ranking rows
     const { data: rows, error: fetchError } = await supabaseAdmin
@@ -86,13 +123,13 @@ export async function POST(req: Request) {
     const eloChangeP1 = winnerChangeIsP1 ? winnerChange : loserChange;
     const eloChangeP2 = winnerChangeIsP1 ? loserChange : winnerChange;
 
-    // 5) Insert duel match record
+    // 5) Insert duel match record with correct score mapping
     const duelRecord: any = {
       player1_id: player1Id,
       player2_id: player2Id,
       winner_id: winnerId,
-      player1_score: player1Score,
-      player2_score: player2Score,
+      player1_score: p1Score,
+      player2_score: p2Score,
       elo_change_p1: eloChangeP1,
       elo_change_p2: eloChangeP2,
       language: language || null,
@@ -112,5 +149,3 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: err.message || String(err) }, { status: 500 });
   }
 }
-
-export const runtime = 'edge';

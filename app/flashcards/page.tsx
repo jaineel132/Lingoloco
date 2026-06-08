@@ -5,6 +5,8 @@ import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-mo
 import styles from './page.module.css';
 import { ArrowLeft, RotateCw, X, Check, Volume2 } from 'lucide-react';
 import Link from 'next/link';
+import { useSupabaseAuth } from '../components/AuthProvider';
+import { createBrowserClient } from '@/lib/supabase/browser';
 
 type Flashcard = {
   id: number;
@@ -21,13 +23,21 @@ type FlashcardApiResponse = {
   error?: string;
 };
 
+const LANGUAGE_NAMES: Record<string, string> = {
+  es: 'Spanish', fr: 'French', ja: 'Japanese', de: 'German',
+  it: 'Italian', kr: 'Korean', zh: 'Chinese', pt: 'Portuguese',
+  ru: 'Russian', hi: 'Hindi',
+};
+
 export default function FlashcardPage() {
+  const { accessToken } = useSupabaseAuth();
   const [cards, setCards] = useState<Flashcard[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [targetLang, setTargetLang] = useState('es');
 
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-200, 200], [-10, 10]);
@@ -36,12 +46,33 @@ export default function FlashcardPage() {
   const currentCard = cards[currentIndex];
   const progress = cards.length === 0 ? 0 : completed ? 100 : (currentIndex / cards.length) * 100;
 
-  const fetchDeck = async () => {
+  useEffect(() => {
+    const loadProfileLang = async () => {
+      if (!accessToken) return;
+      try {
+        const res = await fetch('/api/dashboard', {
+          headers: { Authorization: `Bearer ${accessToken}` },
+          cache: 'no-store',
+        });
+        const json = await res.json();
+        const lang = json?.data?.targetLanguage || 'es';
+        setTargetLang(lang);
+      } catch {
+        // fall back to 'es'
+      }
+    };
+    void loadProfileLang();
+  }, [accessToken]);
+
+  const fetchDeck = async (langOverride?: string) => {
     setIsLoading(true);
     setError('');
 
+    const activeLang = (langOverride && typeof langOverride === 'string' ? langOverride : targetLang) || 'es';
+    const langName = LANGUAGE_NAMES[activeLang] || 'Spanish';
+
     try {
-      const response = await fetch(`/api/flashcards?lang=es&languageName=Spanish&count=5&t=${Date.now()}`, { cache: 'no-store' });
+      const response = await fetch(`/api/flashcards?lang=${activeLang}&languageName=${langName}&count=5&t=${Date.now()}`, { cache: 'no-store' });
       const json = (await response.json()) as FlashcardApiResponse;
 
       if (json.success && Array.isArray(json.data) && json.data.length > 0) {
@@ -145,7 +176,7 @@ export default function FlashcardPage() {
 
         <div className={styles.contentZIndex}>
           <div className={styles.header}>
-            <Link href="/dashboard/es" className={styles.backBtn}>
+            <Link href={`/dashboard/${targetLang}`} className={styles.backBtn}>
               <ArrowLeft size={24} />
             </Link>
             <div style={{ width: 48 }}></div>
@@ -156,8 +187,8 @@ export default function FlashcardPage() {
             <h1 className={styles.finishTitle}>Deck Completed!</h1>
             <p className={styles.finishText}>You've successfully reviewed all your flashcards for today. Keep up the great work and your knowledge will grow!</p>
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-              <button className={styles.finishBtn} onClick={fetchDeck}>New AI Deck</button>
-              <Link href="/dashboard/es">
+              <button className={styles.finishBtn} onClick={() => fetchDeck(targetLang)}>New AI Deck</button>
+              <Link href={`/dashboard/${targetLang}`}>
                 <button className={styles.finishBtn}>Back to Dashboard</button>
               </Link>
             </div>
@@ -175,12 +206,12 @@ export default function FlashcardPage() {
 
       <div className={styles.contentZIndex}>
         <div className={styles.header}>
-          <Link href="/dashboard/es" className={styles.backBtn}>
+          <Link href={`/dashboard/${targetLang}`} className={styles.backBtn}>
             <ArrowLeft size={24} />
           </Link>
           <div style={{ textAlign: 'center' }}>
             <h1 className={styles.title}>Daily Review</h1>
-            <p className={styles.subtitle}>Spanish Essentials</p>
+            <p className={styles.subtitle}>{LANGUAGE_NAMES[targetLang] || 'Language'} Essentials</p>
           </div>
           <div style={{ width: 48 }}></div>
         </div>
@@ -214,7 +245,7 @@ export default function FlashcardPage() {
                 <div className={styles.cardFace}>
                   <div className={styles.cardTopRow}>
                     <div className={styles.langBadge}>{currentCard.lang}</div>
-                    <div className={styles.soundBtn} onClick={(event) => { event.stopPropagation(); playAudio(currentCard.word, 'es-ES'); }}>
+                      <div className={styles.soundBtn} onClick={(event) => { event.stopPropagation(); playAudio(currentCard.word, `${targetLang}-${targetLang.toUpperCase()}`); }}>
                       <Volume2 size={18} />
                     </div>
                   </div>

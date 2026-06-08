@@ -11,11 +11,32 @@ const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const { roomId, playerId, timeMs } = body;
+    // Verify the caller is authenticated
+    const authHeader = req.headers.get('authorization') || '';
+    const accessToken = authHeader.toLowerCase().startsWith('bearer ')
+      ? authHeader.slice(7).trim()
+      : '';
 
-    if (!roomId || !playerId || typeof timeMs !== 'number') {
-      return NextResponse.json({ error: 'roomId, playerId, and timeMs are required.' }, { status: 400 });
+    if (!accessToken) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const supabaseAuth = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+      auth: { persistSession: false },
+      global: { headers: { Authorization: `Bearer ${accessToken}` } },
+    });
+
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await req.json();
+    const { roomId, timeMs } = body;
+    const playerId = user.id;
+
+    if (!roomId || typeof timeMs !== 'number') {
+      return NextResponse.json({ error: 'roomId and timeMs are required.' }, { status: 400 });
     }
 
     // Retrieve the current duel room state
@@ -163,5 +184,3 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: error.message || String(error) }, { status: 500 });
   }
 }
-
-export const runtime = 'edge';

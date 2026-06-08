@@ -39,8 +39,9 @@ export default function DuelSessionPage({ params }: { params: Promise<{ id: stri
   const router = useRouter();
   const supabase = createBrowserClient();
   const unwrappedParams = use(params);
+  const targetId = unwrappedParams.id;
 
-  // Users & Room State
+  // State
   const [currentUser, setCurrentUser] = useState<ProfileRow | null>(null);
   const [opponent, setOpponent] = useState<ProfileRow | null>(null);
   const [room, setRoom] = useState<DuelRoom | null>(null);
@@ -50,8 +51,15 @@ export default function DuelSessionPage({ params }: { params: Promise<{ id: stri
   // Realtime Channels
   const dbChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const presenceChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const roomIdRef = useRef<string | null>(null);
+  const currentUserIdRef = useRef<string | null>(null);
+  const player1IdRef = useRef<string | null>(null);
+  const player2IdRef = useRef<string | null>(null);
+  const readyLockRef = useRef(false);
 
   // Presence Tracking
+  const p1PresentRef = useRef(false);
+  const p2PresentRef = useRef(false);
   const [p1Present, setP1Present] = useState(false);
   const [p2Present, setP2Present] = useState(false);
 
@@ -98,8 +106,8 @@ export default function DuelSessionPage({ params }: { params: Promise<{ id: stri
 
         if (!active) return;
         setCurrentUser(myProfile);
-
-        const targetId = unwrappedParams.id;
+        currentUserIdRef.current = myProfile.id;
+        roomIdRef.current = targetId;
 
         // 1. Check if targetId is an existing room ID
         const { data: existingRoom, error: roomError } = await supabase
@@ -110,9 +118,11 @@ export default function DuelSessionPage({ params }: { params: Promise<{ id: stri
 
         if (existingRoom) {
           setRoom(existingRoom);
+          player1IdRef.current = existingRoom.player1_id;
+          player2IdRef.current = existingRoom.player2_id;
 
           // Fetch opponent profile details
-          const opponentId = authUser.id === existingRoom.player1_id ? existingRoom.player2_id : existingRoom.player1_id;
+          const opponentId = myProfile.id === existingRoom.player1_id ? existingRoom.player2_id : existingRoom.player1_id;
           const { data: oppProfile, error: oppError } = await supabase
             .from('profiles')
             .select('id,name,email,image,targetLanguage,level,xp')
@@ -128,7 +138,7 @@ export default function DuelSessionPage({ params }: { params: Promise<{ id: stri
           const { data: activeRooms, error: activeRoomsError } = await supabase
             .from('duel_rooms')
             .select('*')
-            .or(`and(player1_id.eq.${authUser.id},player2_id.eq.${targetId}),and(player1_id.eq.${targetId},player2_id.eq.${authUser.id})`)
+            .or(`and(player1_id.eq.${myProfile.id},player2_id.eq.${targetId}),and(player1_id.eq.${targetId},player2_id.eq.${myProfile.id})`)
             .neq('status', 'finished')
             .order('updated_at', { ascending: false })
             .limit(1);
@@ -142,7 +152,7 @@ export default function DuelSessionPage({ params }: { params: Promise<{ id: stri
             const { data: newRoom, error: createError } = await supabase
               .from('duel_rooms')
               .insert({
-                player1_id: authUser.id,
+                player1_id: myProfile.id,
                 player2_id: targetId,
                 language: myProfile.targetLanguage || 'Spanish',
                 status: 'waiting',
@@ -176,17 +186,26 @@ export default function DuelSessionPage({ params }: { params: Promise<{ id: stri
 
   // Subscribe to changes on the specific Room record and setup Presence
   useEffect(() => {
-    if (!room?.id || !currentUser) return;
+    if (!roomIdRef.current || !currentUserIdRef.current) return;
+
+    const currentRoomId = roomIdRef.current;
 
     // A. Realtime Database Subscription
     const dbChannel = supabase
-      .channel(`room-db:${room.id}`)
+      .channel(`room-db:${currentRoomId}`)
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'duel_rooms', filter: `id=eq.${room.id}` },
+        { event: 'UPDATE', schema: 'public', table: 'duel_rooms', filter: `id=eq.${currentRoomId}` },
         (payload: any) => {
           const updated = payload.new as DuelRoom;
           setRoom(updated);
+
+          if (updated.player1_id) {
+            player1IdRef.current = updated.player1_id;
+          }
+          if (updated.player2_id) {
+            player2IdRef.current = updated.player2_id;
+          }
         }
       )
       .subscribe();
@@ -194,26 +213,41 @@ export default function DuelSessionPage({ params }: { params: Promise<{ id: stri
     dbChannelRef.current = dbChannel;
 
     // B. Realtime Presence Subscription
-    const presenceChannel = supabase.channel(`room-presence:${room.id}`, {
-      config: { presence: { key: currentUser.id } },
+    const p1Id = player1IdRef.current;
+    const p2Id = player2IdRef.current;
+
+    const presenceChannel = supabase.channel(`room-presence:${currentRoomId}`, {
+      config: { presence: { key: currentUserIdRef.current } },
     });
 
     presenceChannel
       .on('presence', { event: 'sync' }, () => {
         const state = presenceChannel.presenceState();
         const keys = Object.keys(state);
-        const p1InRoom = keys.includes(room.player1_id);
-        const p2InRoom = keys.includes(room.player2_id);
+        const safeP1 = p1Id || (room?.player1_id ?? '');
+        const safeP2 = p2Id || (room?.player2_id ?? '');
+        const p1InRoom = safeP1 ? keys.includes(safeP1) : false;
+        const p2InRoom = safeP2 ? keys.includes(safeP2) : false;
 
+        p1PresentRef.current = p1InRoom;
+        p2PresentRef.current = p2InRoom;
         setP1Present(p1InRoom);
         setP2Present(p2InRoom);
 
         // If both players are present and room status is still waiting, update status to ready
-        if (p1InRoom && p2InRoom && room.status === 'waiting') {
+        if (p1InRoom && p2InRoom && !readyLockRef.current) {
+          readyLockRef.current = true;
           void supabase
             .from('duel_rooms')
             .update({ status: 'ready', updated_at: new Date().toISOString() })
-            .eq('id', room.id);
+            .eq('id', currentRoomId)
+            .then((result: { error?: { message?: string } | null }) => {
+              const { error } = result;
+              if (error) {
+                readyLockRef.current = false;
+                console.error('Failed to update room to ready:', error);
+              }
+            });
         }
       })
       .subscribe(async (status: any) => {
@@ -232,7 +266,7 @@ export default function DuelSessionPage({ params }: { params: Promise<{ id: stri
         void supabase.removeChannel(presenceChannelRef.current);
       }
     };
-  }, [room?.id, currentUser, supabase]);
+  }, [supabase, room?.player1_id, room?.player2_id]);
 
   // Handle Room State Transitions (Countdown, Round complete, Typing timers)
   useEffect(() => {
