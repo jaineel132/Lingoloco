@@ -249,8 +249,35 @@ export async function POST(request: Request) {
       }
 
       if (notification.status !== 'pending') {
+        // Even if already responded, let's find the active room to return its ID so they can join it
+        let roomId: string | null = null;
+        if (action === 'accept') {
+          const { data: senderProfile } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('email', notification.senderEmail)
+            .maybeSingle();
+
+          if (senderProfile) {
+            const { data: existingRooms } = await supabase
+              .from('duel_rooms')
+              .select('id')
+              .or(`and(player1_id.eq.${senderProfile.id},player2_id.eq.${currentUser.id}),and(player1_id.eq.${currentUser.id},player2_id.eq.${senderProfile.id})`)
+              .neq('status', 'finished')
+              .limit(1);
+
+            if (existingRooms && existingRooms.length > 0) {
+              roomId = existingRooms[0].id;
+            }
+          }
+        }
+
         return NextResponse.json(
-          { success: true, message: `This request was already ${notification.status}.` },
+          {
+            success: true,
+            message: `This request was already ${notification.status}.`,
+            roomId: roomId || undefined
+          },
           { status: 200, headers: noCacheHeaders() }
         );
       }
@@ -268,10 +295,53 @@ export async function POST(request: Request) {
         throw updateError;
       }
 
+      let roomId: string | null = null;
+
+      if (action === 'accept') {
+        const { data: senderProfile, error: senderError } = await supabase
+          .from('profiles')
+          .select('id, targetLanguage')
+          .eq('email', notification.senderEmail)
+          .maybeSingle();
+
+        if (senderError) throw senderError;
+        if (!senderProfile) {
+          throw new Error('Sender profile not found.');
+        }
+
+        const { data: existingRooms, error: existingRoomsError } = await supabase
+          .from('duel_rooms')
+          .select('id')
+          .or(`and(player1_id.eq.${senderProfile.id},player2_id.eq.${currentUser.id}),and(player1_id.eq.${currentUser.id},player2_id.eq.${senderProfile.id})`)
+          .neq('status', 'finished')
+          .limit(1);
+
+        if (existingRoomsError) throw existingRoomsError;
+
+        if (existingRooms && existingRooms.length > 0) {
+          roomId = existingRooms[0].id;
+        } else {
+          const { data: newRoom, error: createRoomError } = await supabase
+            .from('duel_rooms')
+            .insert({
+              player1_id: senderProfile.id,
+              player2_id: currentUser.id,
+              language: currentUser.targetLanguage || 'Spanish',
+              status: 'waiting',
+            })
+            .select('id')
+            .single();
+
+          if (createRoomError) throw createRoomError;
+          roomId = newRoom.id;
+        }
+      }
+
       return NextResponse.json(
         {
           success: true,
           message: action === 'accept' ? 'Duel request accepted.' : 'Duel request declined.',
+          roomId: roomId || undefined,
         },
         { status: 200, headers: noCacheHeaders() }
       );

@@ -181,6 +181,10 @@ export default function MatchPage() {
         )
       );
       setStatusText(payload?.message || 'Request updated.');
+
+      if (action === 'accept' && payload.roomId) {
+        router.push(`/compete/duel/${payload.roomId}`);
+      }
     } catch (error: any) {
       setStatusText(error?.message || 'Failed to update request.');
     }
