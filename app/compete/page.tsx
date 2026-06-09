@@ -86,13 +86,7 @@ export default function CompetePage() {
       .subscribe();
 
     return () => {
-      try {
-        // unsubscribe
-        // @ts-ignore
-        channel.unsubscribe();
-      } catch (e) {
-        // ignore
-      }
+      supabase.removeChannel(channel).catch(() => {});
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

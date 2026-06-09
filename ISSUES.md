@@ -20,30 +20,30 @@
 | 9 | Score inversion on loss in duel-result | `app/api/compete/duel-result/route.ts` | ✅ Fixed - winner/loser determined server-side from scores |
 | 10 | Hardcoded `/dashboard` links causing 404s | `app/flashcards/page.tsx` | ✅ Fixed - now dynamic based on user's target language via `/api/dashboard` |
 | 11 | Edge Runtime + `cookies()` conflict in leaderboard | `app/api/compete/leaderboard/route.ts` | ✅ Not a bug - `cookies()` is supported in Edge Runtime |
-| 12 | Duplicated ELO calculation logic | `submit-round/route.ts` + `duel-result/route.ts` | ❌ Still outstanding |
+| 12 | Duplicated ELO calculation logic | `submit-round/route.ts` + `duel-result/route.ts` | ✅ Fixed - extracted shared `processDuelResult()` into `lib/elo.ts` |
 | 13 | Flashcards hardcoded to Spanish regardless of user language | `app/flashcards/page.tsx` | ✅ Fixed - dynamically fetches user's target language |
-| 14 | Roleplay result is static hardcoded data | `app/roleplay/[id]/result/page.tsx` | ❌ Still outstanding |
+| 14 | Roleplay result is static hardcoded data | `app/roleplay/[id]/result/page.tsx` | ✅ Fixed - stores session data in sessionStorage, dynamic score/label/feedback |
 | 15 | Avatar stores base64 data URIs in DB instead of storage | `app/api/user/profile/route.ts` | ❌ Still outstanding |
 | 16 | Friends leaderboard always returns empty array | `app/api/compete/leaderboard/route.ts` | ❌ Still outstanding |
-| 17 | `getLeagueFromElo` returns `string` vs DB `league_tier` enum | `lib/elo.ts` | ❌ Still outstanding |
+| 17 | `getLeagueFromElo` returns `string` vs DB `league_tier` enum | `lib/elo.ts` | ✅ Fixed - added `LeagueTier` type alias, return type is now `LeagueTier` |
 
 ## 🟡 MEDIUM (Quality & UX)
 
 | # | Issue | Location | Status |
 |---|-------|----------|--------|
-| 18 | Static hardcoded stats on Match page (Win Rate 68%, etc.) | `app/compete/match/page.tsx` | ❌ Still outstanding |
-| 19 | Static hardcoded top rivals list | `app/compete/match/page.tsx` | ❌ Still outstanding |
+| 18 | Static hardcoded stats on Match page (Win Rate 68%, etc.) | `app/compete/match/page.tsx` | ✅ Fixed - fetches dynamic `userStats` from `/api/compete/duels` |
+| 19 | Static hardcoded top rivals list | `app/compete/match/page.tsx` | ✅ Fixed - fetches top rivals from `duel_matches` via API |
 | 20 | Squad membership stored in localStorage, not DB | `app/compete/challenges/page.tsx` | ❌ Still outstanding |
-| 21 | `@ts-ignore` bypass on channel.unsubscribe | `app/compete/page.tsx` | ❌ Still outstanding |
-| 22 | `key={index}` in renderChallengeText causes re-render issues | `app/compete/duel/[id]/page.tsx` | ❌ Still outstanding |
+| 21 | `@ts-ignore` bypass on channel.unsubscribe | `app/compete/page.tsx` | ✅ Fixed - uses `supabase.removeChannel()` instead |
+| 22 | `key={index}` in renderChallengeText causes re-render issues | `app/compete/duel/[id]/page.tsx` | ✅ Fixed - uses `key={\`${index}-${char}\`}` for stable keys |
 | 23 | Missing loading/error states in several components | Various | ❌ Still outstanding |
-| 24 | Empty `auth/[...nextauth]` catch-all route | `app/api/auth/[...nextauth]/` | ❌ Still outstanding |
+| 24 | Empty `auth/[...nextauth]` catch-all route | `app/api/auth/[...nextauth]/` | ✅ Fixed - removed empty directory (not using NextAuth) |
 
 ## 🟢 LOW (Minor)
 
 | # | Issue | Location | Status |
 |---|-------|----------|--------|
 | 25 | No test files exist | Entire project | ❌ Still outstanding |
-| 26 | No input validation on practice API | `app/api/practice/route.ts` | ❌ Still outstanding |
-| 27 | TypeScript `strict` mode likely not enabled | `tsconfig.json` | ❌ Still outstanding |
-| 28 | `weekly-reset` uses `SUPABASE_URL` instead of `NEXT_PUBLIC_SUPABASE_URL` | `supabase/functions/weekly-reset/index.ts` | ❌ Still outstanding |
+| 26 | No input validation on practice API | `app/api/practice/route.ts` | ✅ Fixed - added validation for lang code format, topic/section length limits |
+| 27 | TypeScript `strict` mode likely not enabled | `tsconfig.json` | ✅ False positive - `"strict": true` already set |
+| 28 | `weekly-reset` uses `SUPABASE_URL` instead of `NEXT_PUBLIC_SUPABASE_URL` | `supabase/functions/weekly-reset/index.ts` | ✅ Fixed - falls back to `NEXT_PUBLIC_SUPABASE_URL` if `SUPABASE_URL` not set |

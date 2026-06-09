@@ -140,7 +140,16 @@ export default function RoleplaySession({ params }: { params: Promise<{ id: stri
             <div className={styles.chatStatus}>AI Partner is active</div>
           </div>
           <button 
-            onClick={() => router.push(`/roleplay/${unwrappedParams.id}/result`)}
+            onClick={() => {
+              if (typeof window !== 'undefined') {
+                sessionStorage.setItem(`roleplay_${unwrappedParams.id}`, JSON.stringify({
+                  messages: messages,
+                  targetLanguage,
+                  scenarioId: unwrappedParams.id,
+                }));
+              }
+              router.push(`/roleplay/${unwrappedParams.id}/result`);
+            }}
             style={{marginLeft: 'auto', background: 'white', color: '#097C87', border: 'none', padding: '0.6rem 1.2rem', borderRadius: '20px', fontWeight: 600, cursor: 'pointer'}}
           >
             Finish Roleplay

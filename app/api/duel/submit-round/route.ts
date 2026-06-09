@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { calculateEloChange, getLeagueFromElo } from '@/lib/elo';
+import { processDuelResult } from '@/lib/elo';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY as string;
@@ -76,86 +76,27 @@ export async function POST(req: Request) {
       }
 
       if (room.current_round === 5) {
-        // Match finished! Calculate Elo changes
         updates.status = 'finished';
-        const now = new Date().toISOString();
 
         const p1Win = finalP1Score > finalP2Score;
         const winnerId = p1Win ? room.player1_id : room.player2_id;
         const loserId = p1Win ? room.player2_id : room.player1_id;
 
-        // Fetch rankings for both users
-        const { data: rows, error: fetchRankError } = await supabaseAdmin
-          .from('user_rankings')
-          .select('*')
-          .in('user_id', [winnerId, loserId]);
+        try {
+          const result = await processDuelResult(supabaseAdmin, {
+            winnerId,
+            loserId,
+            player1Id: room.player1_id,
+            player2Id: room.player2_id,
+            player1Score: finalP1Score,
+            player2Score: finalP2Score,
+            language: room.language,
+          });
 
-        if (fetchRankError || !rows || rows.length < 2) {
-          console.error('Could not load user rankings for ELO calculation:', fetchRankError);
-        } else {
-          const winnerRow = rows.find((r: any) => r.user_id === winnerId);
-          const loserRow = rows.find((r: any) => r.user_id === loserId);
-
-          if (winnerRow && loserRow) {
-            const { winnerChange, loserChange } = calculateEloChange(winnerRow.elo_rating, loserRow.elo_rating);
-
-            const winnerNewElo = winnerRow.elo_rating + winnerChange;
-            const rawLoserNewElo = loserRow.elo_rating + loserChange;
-            const loserNewElo = Math.max(100, rawLoserNewElo);
-
-            const winnerLeague = getLeagueFromElo(winnerNewElo);
-            const loserLeague = getLeagueFromElo(loserNewElo);
-
-            // Update winner user_rankings
-            const winnerXpGain = 50 + winnerChange;
-            await supabaseAdmin
-              .from('user_rankings')
-              .update({
-                elo_rating: winnerNewElo,
-                league: winnerLeague,
-                wins: (winnerRow.wins || 0) + 1,
-                win_streak: (winnerRow.win_streak || 0) + 1,
-                xp_this_week: (winnerRow.xp_this_week || 0) + winnerXpGain,
-                xp_total: (winnerRow.xp_total || 0) + winnerXpGain,
-                updated_at: now,
-              })
-              .eq('user_id', winnerId);
-
-            // Update loser user_rankings
-            const loserXpGain = 10;
-            await supabaseAdmin
-              .from('user_rankings')
-              .update({
-                elo_rating: loserNewElo,
-                league: loserLeague,
-                losses: (loserRow.losses || 0) + 1,
-                win_streak: 0,
-                xp_this_week: (loserRow.xp_this_week || 0) + loserXpGain,
-                xp_total: (loserRow.xp_total || 0) + loserXpGain,
-                updated_at: now,
-              })
-              .eq('user_id', loserId);
-
-            // Calculate explicit P1 and P2 Elo changes
-            const eloChangeP1 = p1Win ? winnerChange : loserChange;
-            const eloChangeP2 = p1Win ? loserChange : winnerChange;
-
-            updates.elo_change_p1 = eloChangeP1;
-            updates.elo_change_p2 = eloChangeP2;
-
-            // Insert match record
-            await supabaseAdmin.from('duel_matches').insert([{
-              player1_id: room.player1_id,
-              player2_id: room.player2_id,
-              winner_id: winnerId,
-              player1_score: finalP1Score,
-              player2_score: finalP2Score,
-              elo_change_p1: eloChangeP1,
-              elo_change_p2: eloChangeP2,
-              language: room.language,
-              played_at: now,
-            }]);
-          }
+          updates.elo_change_p1 = result.eloChangeP1;
+          updates.elo_change_p2 = result.eloChangeP2;
+        } catch (eloErr: any) {
+          console.error('ELO processing failed (match will still finish):', eloErr);
         }
       } else {
         updates.status = 'round_complete';

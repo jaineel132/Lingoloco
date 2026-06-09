@@ -193,6 +193,17 @@ export async function POST(request: Request) {
     const topic = compactText(body.topic) || 'beginner foundations';
     const lang = compactText(body.lang) || 'es';
     const section = compactText(body.section) || 'Getting Started';
+
+    if (topic.length > 200) {
+      return NextResponse.json({ success: false, error: 'Topic too long (max 200 characters)' }, { status: 400 });
+    }
+    if (lang && !/^[a-z]{2}$/.test(lang)) {
+      return NextResponse.json({ success: false, error: 'Invalid language code' }, { status: 400 });
+    }
+    if (section.length > 100) {
+      return NextResponse.json({ success: false, error: 'Section too long (max 100 characters)' }, { status: 400 });
+    }
+
     const languageName = compactText(body.languageName) || LANGUAGE_NAMES[lang] || 'the selected language';
     
     if (!process.env.GEMINI_API_KEY) {

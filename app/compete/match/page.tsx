@@ -33,10 +33,30 @@ type DuelNotification = {
   respondedAt: string | null;
 };
 
+type UserStats = {
+  wins: number;
+  losses: number;
+  winStreak: number;
+  xpTotal: number;
+  eloRating: number;
+  league: string;
+  winRate: number;
+  totalMatches: number;
+};
+
+type TopRival = {
+  id: string;
+  name: string;
+  wins: number;
+  losses: number;
+};
+
 type DuelRoomPayload = {
   rivals: RivalCard[];
   notifications: DuelNotification[];
   language?: string;
+  userStats?: UserStats | null;
+  topRivals?: TopRival[];
 };
 
 const CARD_COLORS = ['#FF6B6B', '#4ECDC4', '#FFE66D', '#1A535C', '#EF476F', '#118AB2', '#06D6A0'];
@@ -47,6 +67,8 @@ export default function MatchPage() {
   const [cards, setCards] = useState<RivalCard[]>([]);
   const [notifications, setNotifications] = useState<DuelNotification[]>([]);
   const [duelLanguage, setDuelLanguage] = useState('');
+  const [userStats, setUserStats] = useState<UserStats | null>(null);
+  const [topRivals, setTopRivals] = useState<TopRival[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [sendingCardId, setSendingCardId] = useState<string | null>(null);
   const [statusText, setStatusText] = useState('');
@@ -79,6 +101,8 @@ export default function MatchPage() {
       setCards(Array.isArray(payload?.data?.rivals) ? payload.data.rivals : []);
       setNotifications(Array.isArray(payload?.data?.notifications) ? payload.data.notifications : []);
       setDuelLanguage(String(payload?.data?.language || '').toUpperCase());
+      setUserStats(payload?.data?.userStats ?? null);
+      setTopRivals(Array.isArray(payload?.data?.topRivals) ? payload.data.topRivals : []);
       setStatusText('');
     } catch (error: any) {
       setStatusText(error?.message || 'Failed to load duel data.');
@@ -242,9 +266,9 @@ export default function MatchPage() {
           <div className={styles.sidebarCard}>
             <h3>Your Stats</h3>
             <p className={styles.sidebarSub}>Current Season</p>
-            <div className={styles.statRow}><span>Win Rate</span><strong>68%</strong></div>
-            <div className={styles.statRow}><span>Matches</span><strong>124</strong></div>
-            <div className={styles.statRow}><span>Current Streak</span><strong>🔥 5</strong></div>
+            <div className={styles.statRow}><span>Win Rate</span><strong>{userStats ? `${userStats.winRate}%` : '—'}</strong></div>
+            <div className={styles.statRow}><span>Matches</span><strong>{userStats ? userStats.totalMatches : '—'}</strong></div>
+            <div className={styles.statRow}><span>Current Streak</span><strong>{userStats ? `🔥 ${userStats.winStreak}` : '—'}</strong></div>
           </div>
         </div>
 
@@ -350,30 +374,22 @@ export default function MatchPage() {
 
           <div className={styles.sidebarCard}>
             <h3>Top Rivals</h3>
-            <p className={styles.sidebarSub}>Your highest win rates</p>
-            <ul className={styles.rivalList}>
-              <li>
-                <div className={styles.avatarMini} style={{background: '#FF6B6B'}}>J</div>
-                <div className={styles.rivalInfo}>
-                  <strong>Jake_M</strong>
-                  <span>8 Wins - 2 Losses</span>
-                </div>
-              </li>
-              <li>
-                <div className={styles.avatarMini} style={{background: '#4ECDC4'}}>L</div>
-                <div className={styles.rivalInfo}>
-                  <strong>Lina99</strong>
-                  <span>5 Wins - 4 Losses</span>
-                </div>
-              </li>
-              <li>
-                <div className={styles.avatarMini} style={{background: '#FFE66D'}}>T</div>
-                <div className={styles.rivalInfo}>
-                  <strong>Tom_FR</strong>
-                  <span>12 Wins - 10 Losses</span>
-                </div>
-              </li>
-            </ul>
+            <p className={styles.sidebarSub}>Your most frequent opponents</p>
+            {topRivals.length === 0 ? (
+              <p className={styles.emptyNote}>No duels played yet.</p>
+            ) : (
+              <ul className={styles.rivalList}>
+                {topRivals.map((rival, i) => (
+                  <li key={rival.id}>
+                    <div className={styles.avatarMini} style={{background: CARD_COLORS[i % CARD_COLORS.length]}}>{rival.name.charAt(0).toUpperCase()}</div>
+                    <div className={styles.rivalInfo}>
+                      <strong>{rival.name}</strong>
+                      <span>{rival.wins} Wins - {rival.losses} Losses</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </div>
       </div>

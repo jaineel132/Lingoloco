@@ -447,7 +447,7 @@ export default function DuelSessionPage({ params }: { params: Promise<{ id: stri
         charClass = inputVal[index] === char ? styles.charCorrect : styles.charIncorrect;
       }
       return (
-        <span key={index} className={charClass}>
+        <span key={`${index}-${char}`} className={charClass}>
           {char}
         </span>
       );

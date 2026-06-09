@@ -121,6 +121,67 @@ export async function GET(request: Request) {
 
   const notifications = normalizeNotifications(notificationRows);
 
+  const { data: recentMatches } = await supabase
+    .from('duel_matches')
+    .select('player1_id,player2_id,winner_id,player1_score,player2_score')
+    .or(`player1_id.eq.${user.id},player2_id.eq.${user.id}`)
+    .order('played_at', { ascending: false })
+    .limit(50);
+
+  const opponentStats = new Map<string, { name: string; wins: number; losses: number }>();
+  if (recentMatches) {
+    for (const match of recentMatches) {
+      const opponentId = match.player1_id === user.id ? match.player2_id : match.player1_id;
+      const entry = opponentStats.get(opponentId) || { name: '', wins: 0, losses: 0 };
+      if (match.winner_id === user.id) {
+        entry.wins++;
+      } else {
+        entry.losses++;
+      }
+      opponentStats.set(opponentId, entry);
+    }
+  }
+
+  const opponentIds = Array.from(opponentStats.keys());
+  if (opponentIds.length > 0) {
+    const { data: opponentProfiles } = await supabase
+      .from('profiles')
+      .select('id,name')
+      .in('id', opponentIds);
+    if (opponentProfiles) {
+      for (const profile of opponentProfiles) {
+        const stats = opponentStats.get(profile.id);
+        if (stats) stats.name = profile.name || 'Unknown';
+      }
+    }
+  }
+
+  const topRivals = Array.from(opponentStats.entries())
+    .map(([id, stats]) => ({ id, name: stats.name || 'Unknown', wins: stats.wins, losses: stats.losses }))
+    .sort((a, b) => (b.wins + b.losses) - (a.wins + a.losses))
+    .slice(0, 5);
+
+  const { data: userRanking } = await supabase
+    .from('user_rankings')
+    .select('wins,losses,win_streak,xp_total,elo_rating,league')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  const userStats = userRanking
+    ? {
+        wins: userRanking.wins || 0,
+        losses: userRanking.losses || 0,
+        winStreak: userRanking.win_streak || 0,
+        xpTotal: userRanking.xp_total || 0,
+        eloRating: userRanking.elo_rating || 1000,
+        league: userRanking.league || 'bronze',
+        winRate: (userRanking.wins || 0) + (userRanking.losses || 0) > 0
+          ? Math.round(((userRanking.wins || 0) / ((userRanking.wins || 0) + (userRanking.losses || 0))) * 100)
+          : 0,
+        totalMatches: (userRanking.wins || 0) + (userRanking.losses || 0),
+      }
+    : null;
+
   return NextResponse.json(
     {
       success: true,
@@ -128,6 +189,8 @@ export async function GET(request: Request) {
         rivals: rivalCards,
         language: currentTargetLanguage,
         notifications,
+        userStats,
+        topRivals,
       },
     },
     { status: 200, headers: noCacheHeaders() }

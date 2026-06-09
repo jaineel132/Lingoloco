@@ -9,7 +9,7 @@ function getEnv(name: string) {
   return process.env[name];
 }
 
-const SUPABASE_URL = getEnv('SUPABASE_URL');
+const SUPABASE_URL = getEnv('SUPABASE_URL') || getEnv('NEXT_PUBLIC_SUPABASE_URL');
 const SUPABASE_SERVICE_ROLE_KEY = getEnv('SUPABASE_SERVICE_ROLE_KEY');
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {

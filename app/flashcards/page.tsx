@@ -5,7 +5,7 @@ import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-mo
 import styles from './page.module.css';
 import { ArrowLeft, RotateCw, X, Check, Volume2 } from 'lucide-react';
 import Link from 'next/link';
-import { useSupabaseAuth } from '../components/AuthProvider';
+import { useSupabaseAuth } from '@/components/AuthProvider';
 import { createBrowserClient } from '@/lib/supabase/browser';
 
 type Flashcard = {
@@ -160,7 +160,7 @@ export default function FlashcardPage() {
           <div className={styles.completionContainer}>
             <h1 className={styles.finishTitle}>Could not load flashcards</h1>
             <p className={styles.finishText}>{error || 'Please try again.'}</p>
-            <button className={styles.finishBtn} onClick={fetchDeck}>Try Again</button>
+            <button className={styles.finishBtn} onClick={() => fetchDeck()}>Try Again</button>
           </div>
         </div>
       </div>
