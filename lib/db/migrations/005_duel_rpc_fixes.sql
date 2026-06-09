@@ -102,7 +102,7 @@ BEGIN
 
   IF existing_room_id IS NOT NULL THEN
     UPDATE public.duel_notifications
-    SET status = 'accepted', respondedAt = NOW()
+    SET status = 'accepted', "respondedAt" = NOW()
     WHERE id IN (p_notification_id, (SELECT id FROM public.duel_notifications WHERE "userId" = sender_profile_id AND "senderEmail" = notif_record."senderEmail" AND status = 'pending_waiting_acceptance' LIMIT 1));
 
     RETURN jsonb_build_object('success', true, 'message', 'Duel request accepted.', 'room_id', existing_room_id);
@@ -113,7 +113,7 @@ BEGIN
   RETURNING id INTO new_room_id;
 
   UPDATE public.duel_notifications
-  SET status = 'accepted', respondedAt = NOW()
+  SET status = 'accepted', "respondedAt" = NOW()
   WHERE id IN (p_notification_id, (SELECT id FROM public.duel_notifications WHERE "userId" = sender_profile_id AND "senderEmail" = notif_record."senderEmail" AND status = 'pending_waiting_acceptance' LIMIT 1));
 
   RETURN jsonb_build_object('success', true, 'message', 'Duel request accepted.', 'room_id', new_room_id);
