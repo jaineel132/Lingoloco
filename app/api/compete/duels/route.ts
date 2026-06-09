@@ -24,7 +24,7 @@ type NotificationPayload = {
   senderName: string;
   senderImage: string;
   senderTargetLanguage: string;
-  status: 'pending' | 'accepted' | 'declined';
+  status: 'pending' | 'accepted' | 'declined' | 'pending_waiting_acceptance';
   createdAt: string;
   respondedAt: string | null;
 };
@@ -46,7 +46,9 @@ function normalizeNotifications(notifications: unknown): NotificationPayload[] {
         senderName: String(raw.senderName ?? 'Unknown learner'),
         senderImage: String(raw.senderImage ?? ''),
         senderTargetLanguage: String(raw.senderTargetLanguage ?? ''),
-        status: (raw.status === 'accepted' || raw.status === 'declined' ? raw.status : 'pending') as 'pending' | 'accepted' | 'declined',
+        status: ['pending', 'accepted', 'declined', 'pending_waiting_acceptance'].includes(String(raw.status))
+          ? (raw.status as NotificationPayload['status'])
+          : 'pending',
         createdAt: createdAt.toISOString(),
         respondedAt: respondedAt ? respondedAt.toISOString() : null,
       };
