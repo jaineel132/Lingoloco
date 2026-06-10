@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, useMotionValue, useTransform, AnimatePresence } from 'framer-motion';
 import styles from './page.module.css';
 import { Shield, Zap, X, Check, ArrowLeft, Radar } from 'lucide-react';
@@ -28,7 +28,7 @@ type DuelNotification = {
   senderName: string;
   senderImage: string;
   senderTargetLanguage: string;
-  status: 'pending' | 'accepted' | 'declined';
+  status: 'pending' | 'accepted' | 'declined' | 'pending_waiting_acceptance';
   createdAt: string;
   respondedAt: string | null;
 };
@@ -109,6 +109,8 @@ export default function MatchPage() {
       setCards([]);
       setNotifications([]);
       setDuelLanguage('');
+      setUserStats(null);
+      setTopRivals([]);
     } finally {
       setIsLoading(false);
     }
@@ -143,6 +145,33 @@ export default function MatchPage() {
       void supabase.removeChannel(channel);
     };
   }, [supabase, user?.id]);
+
+  const prevAcceptedIds = useRef(new Set<string>());
+
+  useEffect(() => {
+    const accepted = notifications.filter(n => n.status === 'accepted');
+    const newlyAccepted = accepted.filter(n => !prevAcceptedIds.current.has(n.id));
+
+    if (newlyAccepted.length > 0) {
+      for (const n of newlyAccepted) {
+        prevAcceptedIds.current.add(n.id);
+      }
+      supabase
+        .from('duel_rooms')
+        .select('id')
+        .or(`player1_id.eq.${user?.id},player2_id.eq.${user?.id}`)
+        .neq('status', 'finished')
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+        .then(({ data }: { data: { id: string } | null }) => {
+          if (data?.id) {
+            router.push(`/compete/duel/${data.id}`);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [notifications, user?.id, supabase, router]);
 
   const sendChallenge = async (card: RivalCard) => {
     if (sendingCardId) {
