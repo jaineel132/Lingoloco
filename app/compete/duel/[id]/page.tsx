@@ -416,9 +416,17 @@ export default function DuelSessionPage({ params }: { params: Promise<{ id: stri
   const submitRoundTime = async (timeMs: number) => {
     if (!room || !currentUser) return;
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
       const response = await fetch('/api/duel/submit-round', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
         body: JSON.stringify({
           roomId: room.id,
           playerId: currentUser.id,

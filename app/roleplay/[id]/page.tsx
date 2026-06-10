@@ -14,18 +14,33 @@ export default function RoleplayDetail({ params }: { params: Promise<{ id: strin
   const unwrappedParams = use(params);
   const { accessToken } = useSupabaseAuth();
   const [langCode, setLangCode] = useState<string>('es');
+  const [profileLoading, setProfileLoading] = useState(true);
   
   useEffect(() => {
     if (!accessToken) {
+      setProfileLoading(false);
       return;
     }
 
     fetch('/api/user/profile', withSupabaseAuthHeaders(accessToken)).then(r => r.json()).then(data => {
       if(data?.data?.courseId) setLangCode(data.data.courseId);
-    }).catch(()=>{});
+    }).catch(()=>{}).finally(() => setProfileLoading(false));
   }, [accessToken]);
 
   const scenario = SCENARIOS_DB[unwrappedParams.id] || SCENARIOS_DB['cafe'];
+
+  if (profileLoading) {
+    return (
+      <div className={styles.pageWrapper}>
+        <div className={styles.container}>
+          <Link href="/roleplay" style={{textDecoration: 'none', color: '#888', marginBottom: '2rem', display: 'block'}}>
+            ← Back to Scenarios
+          </Link>
+          <p>Loading scenario...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.pageWrapper}>

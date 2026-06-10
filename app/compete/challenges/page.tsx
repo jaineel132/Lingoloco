@@ -67,7 +67,6 @@ export default function ChallengesPage() {
     if (typeof window === 'undefined') {
       return null;
     }
-
     const value = window.localStorage.getItem(localStorageKey);
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : null;
@@ -77,27 +76,22 @@ export default function ChallengesPage() {
     if (typeof window === 'undefined') {
       return;
     }
-
     if (squadId === null) {
       window.localStorage.removeItem(localStorageKey);
       return;
     }
-
     window.localStorage.setItem(localStorageKey, String(squadId));
   };
 
-  const applyJoinedSquad = (squadId: number, sourceSquads?: Squad[]) => {
-    const baseList = sourceSquads || squads;
-    const nextSquads = baseList.map((squad) => ({
+  const applyJoinedSquad = (squadId: number) => {
+    setSquads((current) => current.map((squad) => ({
       ...squad,
       joined: squad.id === squadId,
       canJoin: squad.id === squadId ? true : squad.canJoin,
-    }));
-
-    setSquads(nextSquads);
+    })));
     persistLocalJoinedSquad(squadId);
 
-    const joinedSquad = nextSquads.find((squad) => squad.id === squadId) || null;
+    const joinedSquad = squads.find((squad) => squad.id === squadId) || null;
     if (joinedSquad) {
       setSelectedSquad(joinedSquad);
     }
@@ -118,7 +112,7 @@ export default function ChallengesPage() {
       const json = (await response.json()) as ChallengesApiResponse;
 
       if (json.success && json.data?.squads) {
-        const joinedSquadId = json.data.joinedSquadId ?? readLocalJoinedSquadId();
+        const joinedSquadId = json.data.joinedSquadId;
         setSquads(json.data.squads.map((squad) => ({
           ...squad,
           joined: joinedSquadId === squad.id || squad.joined,
@@ -126,6 +120,14 @@ export default function ChallengesPage() {
         })));
       } else {
         setSquads((current) => current.length ? current : getFallbackSquads());
+        const localJoinedSquadId = readLocalJoinedSquadId();
+        if (localJoinedSquadId) {
+          setSquads((current) => current.map((squad) => ({
+            ...squad,
+            joined: squad.id === localJoinedSquadId,
+            canJoin: squad.id === localJoinedSquadId ? true : squad.canJoin,
+          })));
+        }
       }
     } catch (error) {
       console.error('Failed to fetch squads:', error);
@@ -144,15 +146,6 @@ export default function ChallengesPage() {
   };
 
   useEffect(() => {
-    const localJoinedSquadId = readLocalJoinedSquadId();
-    if (localJoinedSquadId) {
-      setSquads((current) => current.map((squad) => ({
-        ...squad,
-        joined: squad.id === localJoinedSquadId,
-        canJoin: squad.id === localJoinedSquadId ? true : squad.canJoin,
-      })));
-    }
-
     fetchSquads();
   }, [accessToken]);
 

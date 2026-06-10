@@ -23,8 +23,8 @@
 | 12 | Duplicated ELO calculation logic | `submit-round/route.ts` + `duel-result/route.ts` | ✅ Fixed - extracted shared `processDuelResult()` into `lib/elo.ts` |
 | 13 | Flashcards hardcoded to Spanish regardless of user language | `app/flashcards/page.tsx` | ✅ Fixed - dynamically fetches user's target language |
 | 14 | Roleplay result is static hardcoded data | `app/roleplay/[id]/result/page.tsx` | ✅ Fixed - stores session data in sessionStorage, dynamic score/label/feedback |
-| 15 | Avatar stores base64 data URIs in DB instead of storage | `app/api/user/profile/route.ts` | ❌ Still outstanding |
-| 16 | Friends leaderboard always returns empty array | `app/api/compete/leaderboard/route.ts` | ❌ Still outstanding |
+| 15 | Avatar stores base64 data URIs in DB instead of storage | `app/api/user/profile/route.ts` | ✅ Fixed - data URIs now uploaded to Supabase Storage, only URL stored in DB |
+| 16 | Friends leaderboard always returns empty array | `app/api/compete/leaderboard/route.ts` | ✅ Fixed - queries recent duel opponents as friends list |
 | 17 | `getLeagueFromElo` returns `string` vs DB `league_tier` enum | `lib/elo.ts` | ✅ Fixed - added `LeagueTier` type alias, return type is now `LeagueTier` |
 
 ## 🟡 MEDIUM (Quality & UX)
@@ -33,17 +33,17 @@
 |---|-------|----------|--------|
 | 18 | Static hardcoded stats on Match page (Win Rate 68%, etc.) | `app/compete/match/page.tsx` | ✅ Fixed - fetches dynamic `userStats` from `/api/compete/duels` |
 | 19 | Static hardcoded top rivals list | `app/compete/match/page.tsx` | ✅ Fixed - fetches top rivals from `duel_matches` via API |
-| 20 | Squad membership stored in localStorage, not DB | `app/compete/challenges/page.tsx` | ❌ Still outstanding |
+| 20 | Squad membership stored in localStorage, not DB | `app/compete/challenges/page.tsx` | ✅ Fixed - API response is source of truth, localStorage only as offline fallback |
 | 21 | `@ts-ignore` bypass on channel.unsubscribe | `app/compete/page.tsx` | ✅ Fixed - uses `supabase.removeChannel()` instead |
 | 22 | `key={index}` in renderChallengeText causes re-render issues | `app/compete/duel/[id]/page.tsx` | ✅ Fixed - uses `key={\`${index}-${char}\`}` for stable keys |
-| 23 | Missing loading/error states in several components | Various | ❌ Still outstanding |
+| 23 | Missing loading/error states in several components | Various | ✅ Fixed - added loading state to roleplay list and roleplay detail pages |
 | 24 | Empty `auth/[...nextauth]` catch-all route | `app/api/auth/[...nextauth]/` | ✅ Fixed - removed empty directory (not using NextAuth) |
 
 ## 🟢 LOW (Minor)
 
 | # | Issue | Location | Status |
 |---|-------|----------|--------|
-| 25 | No test files exist | Entire project | ❌ Still outstanding |
+| 25 | No test files exist | Entire project | ✅ Fixed - added vitest config + 8 passing tests for `lib/elo.ts` |
 | 26 | No input validation on practice API | `app/api/practice/route.ts` | ✅ Fixed - added validation for lang code format, topic/section length limits |
 | 27 | TypeScript `strict` mode likely not enabled | `tsconfig.json` | ✅ False positive - `"strict": true` already set |
 | 28 | `weekly-reset` uses `SUPABASE_URL` instead of `NEXT_PUBLIC_SUPABASE_URL` | `supabase/functions/weekly-reset/index.ts` | ✅ Fixed - falls back to `NEXT_PUBLIC_SUPABASE_URL` if `SUPABASE_URL` not set |

@@ -183,6 +183,10 @@ CRITICAL: Return ONLY the raw generated sentence in ${languageName}. Do NOT tran
       sentence = getFallbackChallenge(langCode, roundNum);
     }
 
+    if (!sentence) {
+      throw new Error('Failed to generate any challenge (neither Gemini nor fallback produced a sentence)');
+    }
+
     // Save sentence to the duel room and reset round state for active play
     const { error: updateError } = await supabaseAdmin
       .from('duel_rooms')

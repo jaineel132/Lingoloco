@@ -50,18 +50,68 @@ export async function GET(req: Request) {
       );
     }
 
-    // type === 'friends' — TODO: filter by friends list. For now return empty array.
+    // type === 'friends' — treat recent duel opponents as friends
     const { data: userData, error: userError } = await supabase.auth.getUser();
     if (userError) {
-      // If we can't determine user, return empty
       return NextResponse.json([]);
     }
 
     const user = userData?.user ?? null;
     if (!user) return NextResponse.json([]);
 
-    // TODO: implement friends filtering by user's friends list
-    return NextResponse.json([]);
+    const { data: matches, error: matchesError } = await supabase
+      .from('duel_matches')
+      .select('player1_id, player2_id')
+      .or(`player1_id.eq.${user.id},player2_id.eq.${user.id}`)
+      .limit(50);
+
+    if (matchesError) {
+      throw matchesError;
+    }
+
+    const opponentIds = Array.from(new Set(
+      (matches ?? []).map((m) => m.player1_id === user.id ? m.player2_id : m.player1_id)
+    )).filter(Boolean);
+
+    if (opponentIds.length === 0) {
+      return NextResponse.json([]);
+    }
+
+    const { data: rankings, error: rankingsError } = await supabase
+      .from('user_rankings')
+      .select('user_id, elo_rating, xp_this_week, league, wins')
+      .in('user_id', opponentIds)
+      .order('xp_this_week', { ascending: false })
+      .limit(100);
+
+    if (rankingsError) {
+      throw rankingsError;
+    }
+
+    const userIds = Array.from(new Set((rankings ?? []).map((row) => row.user_id).filter(Boolean)));
+    const { data: profiles, error: profilesError } = userIds.length
+      ? await supabase.from('profiles').select('id,name,image').in('id', userIds)
+      : { data: [], error: null };
+
+    if (profilesError) {
+      throw profilesError;
+    }
+
+    const profileById = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
+
+    return NextResponse.json(
+      (rankings ?? []).map((row) => {
+        const profile = profileById.get(row.user_id) || null;
+        return {
+          ...row,
+          name: profile?.name ?? null,
+          image: profile?.image ?? null,
+          profiles: profile
+            ? { username: profile.name, avatar_url: profile.image }
+            : null,
+        };
+      })
+    );
   } catch (err: any) {
     return NextResponse.json({ error: err.message || String(err) }, { status: 500 });
   }

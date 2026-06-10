@@ -57,6 +57,22 @@ export default function RoleplayList() {
 
   const langInfo = LANGUAGES[langCode] || { name: langCode.toUpperCase(), flag: '🌍' };
 
+  if (loading) {
+    return (
+      <div className={styles.pageWrapper}>
+        <div className={styles.container}>
+          <div className={styles.headerRow}>
+            <div>
+              <h1 className={styles.title}>Practice Scenarios</h1>
+              <p className={styles.subtitle}>Loading your language settings...</p>
+            </div>
+            <div className={styles.langPill}>Loading...</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={styles.pageWrapper}>
       <div className={styles.container}>

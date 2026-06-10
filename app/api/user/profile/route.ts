@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServerClient, getSupabaseUser, getSupabaseUserFromRequest } from '../../../../lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
@@ -59,10 +60,40 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ success: false, error: 'Image is too large. Please choose a smaller file.' }, { status: 413 });
     }
 
+    let imageUrl = image;
+
+    if (isDataUri) {
+      const matches = image.match(/^data:(image\/(\w+));base64,(.+)$/);
+      if (!matches) {
+        return NextResponse.json({ success: false, error: 'Invalid image format.' }, { status: 400 });
+      }
+      const mimeType = matches[1];
+      const fileExt = matches[2].toLowerCase() || 'png';
+      const base64Data = matches[3];
+      const buffer = Buffer.from(base64Data, 'base64');
+      const filePath = `${user.id}/${Date.now()}.${fileExt}`;
+
+      const adminClient = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      );
+
+      const { error: uploadError } = await adminClient.storage
+        .from('profileimages')
+        .upload(filePath, buffer, { contentType: mimeType, upsert: true });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data: publicUrlData } = adminClient.storage.from('profileimages').getPublicUrl(filePath);
+      imageUrl = publicUrlData.publicUrl;
+    }
+
     const supabase = await createSupabaseServerClient();
     const { data: updatedProfile, error } = await supabase
       .from('profiles')
-      .update({ image })
+      .update({ image: imageUrl })
       .eq('id', user.id)
       .select('*')
       .single();
