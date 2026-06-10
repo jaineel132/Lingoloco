@@ -75,7 +75,13 @@ export async function POST(req: Request) {
         updates.player2_score = finalP2Score;
       }
 
-      if (room.current_round === 5) {
+      // Check for early match finish (first to 3 wins out of 5)
+      const maxRounds = 5;
+      const winsNeeded = 3;
+      const isEarlyFinish = finalP1Score >= winsNeeded || finalP2Score >= winsNeeded;
+      const isLastRound = room.current_round === maxRounds;
+
+      if (isLastRound || isEarlyFinish) {
         updates.status = 'finished';
 
         const p1Win = finalP1Score > finalP2Score;

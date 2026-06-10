@@ -320,6 +320,10 @@ export default function DuelSessionPage({ params }: { params: Promise<{ id: stri
     if (countdown === 0) {
       const timer = setTimeout(() => {
         setCountdown(null);
+        // Don't generate next challenge if match is already finished
+        if (room?.status === 'finished') {
+          return;
+        }
         // Host (Player 1) generates the challenge via API once countdown ends
         if (currentUser?.id === room?.player1_id && room?.id) {
           void generateNextChallenge();
@@ -341,6 +345,11 @@ export default function DuelSessionPage({ params }: { params: Promise<{ id: stri
     if (roundOverlayTimer === 0) {
       setShowRoundOverlay(false);
       setRoundOverlayTimer(null);
+
+      // Don't start next round if match is already finished
+      if (room?.status === 'finished') {
+        return;
+      }
 
       // Host (Player 1) triggers the ready state for the next round in the database
       if (currentUser?.id === room?.player1_id && room) {
@@ -550,10 +559,10 @@ export default function DuelSessionPage({ params }: { params: Promise<{ id: stri
               Type the sentence exactly as shown as fast as possible. First to finish wins the round. 5 rounds total!
             </p>
           </div>
-          <div className={styles.heroStat}>
-            <Timer size={20} />
-            <span>Round {Math.min(5, room.current_round)} of 5</span>
-          </div>
+            <div className={styles.heroStat}>
+              <Timer size={20} />
+              <span>Round {Math.min(5, room.current_round)} of 5 (First to 3 wins)</span>
+            </div>
         </section>
 
         {/* Players Cards Grid */}
@@ -577,10 +586,10 @@ export default function DuelSessionPage({ params }: { params: Promise<{ id: stri
           </article>
 
           {/* VS Center Pillar */}
-          <div className={styles.vsColumn}>
-            <div className={styles.vsPill}>VS</div>
-            <p className={styles.vsNote}>First to complete 3 rounds wins.</p>
-          </div>
+           <div className={styles.vsColumn}>
+             <div className={styles.vsPill}>VS</div>
+             <p className={styles.vsNote}>First to 3 wins out of 5 rounds.</p>
+           </div>
 
           {/* Player 2 Card (Rival) */}
           <article className={styles.playerCard}>

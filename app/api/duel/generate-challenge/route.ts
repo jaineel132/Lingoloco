@@ -92,14 +92,18 @@ const FALLBACK_SENTENCES: Record<string, string[]> = {
   ],
 };
 
-function getFallbackChallenge(langCode: string, round: number): string {
+function getFallbackChallenge(langCode: string, round: number, previousChallenges: string[] = []): string {
   const pool = FALLBACK_SENTENCES[langCode] || FALLBACK_SENTENCES['es'];
   const wordCountTarget = round <= 1 ? 8 : round <= 2 ? 12 : round <= 3 ? 16 : round <= 4 ? 20 : 25;
   const candidates = pool.filter(s => {
     const count = s.split(/\s+/).length;
-    return Math.abs(count - wordCountTarget) <= 3;
+    return Math.abs(count - wordCountTarget) <= 3 && !previousChallenges.includes(s);
   });
   if (candidates.length === 0) {
+    const unused = pool.filter(s => !previousChallenges.includes(s));
+    if (unused.length > 0) {
+      return unused[Math.floor(Math.random() * unused.length)];
+    }
     return pool[Math.floor(Math.random() * pool.length)];
   }
   return candidates[Math.floor(Math.random() * candidates.length)];
@@ -165,9 +169,11 @@ CRITICAL: Return ONLY the raw generated sentence in ${languageName}. Do NOT tran
         } catch (e: any) {
           const status = typeof e?.status === 'number' ? e.status : 0;
           const isQuotaError = status === 429;
-          errors.push(`${modelName} (attempt ${attempt}): ${e?.message || e}`);
+          const errorMessage = String(e?.message || e);
+          errors.push(`${modelName} (attempt ${attempt}): ${errorMessage}`);
 
-          if (status === 404 || isQuotaError) {
+          // Skip retries for unsupported model errors (e.g., "Cannot read 'image.png' - model does not support image input")
+          if (status === 404 || isQuotaError || errorMessage.includes('image.png') || errorMessage.includes('does not support image')) {
             break;
           }
 
@@ -180,7 +186,7 @@ CRITICAL: Return ONLY the raw generated sentence in ${languageName}. Do NOT tran
     }
 
     if (!sentence) {
-      sentence = getFallbackChallenge(langCode, roundNum);
+      sentence = getFallbackChallenge(langCode, roundNum, previousChallenges || []);
     }
 
     if (!sentence) {
