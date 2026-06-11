@@ -5,7 +5,6 @@ export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
     const type = (url.searchParams.get('type') || 'global') as 'global' | 'friends';
-    const language = url.searchParams.get('language') || undefined;
 
     const supabase = await createSupabaseServerClient();
 
@@ -117,4 +116,3 @@ export async function GET(req: Request) {
   }
 }
 
-export const runtime = 'edge';

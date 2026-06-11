@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+function getGenAI() {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) return null;
+  return new GoogleGenerativeAI(key);
+}
 
 type ChatMessage = {
   sender: 'ai' | 'user';
@@ -42,15 +46,16 @@ export async function POST(req: NextRequest) {
   try {
     const { messages, scenario, targetLanguage, mode } = (await req.json()) as ChatRequestBody;
 
-    if (!process.env.GEMINI_API_KEY) {
-      return NextResponse.json({ error: 'Gemini API key is missing' }, { status: 500 });
-    }
-
     if (!messages || !Array.isArray(messages) || messages.length === 0 || !targetLanguage) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const genAI = getGenAI();
+    if (!genAI) {
+      return NextResponse.json({ error: 'Gemini API key is not configured.' }, { status: 500 });
+    }
+
+    const model = genAI.getGenerativeModel({ model: process.env.GEMINI_MODEL || 'gemini-2.0-flash' });
 
     const resolvedMode = mode === 'tutor' || !scenario ? 'tutor' : 'roleplay';
     const historyPrompt = buildConversationHistory(messages);

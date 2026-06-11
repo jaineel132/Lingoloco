@@ -40,6 +40,7 @@ export default function LanguageOnboarding() {
   });
   const [isCheckingProfile, setIsCheckingProfile] = useState(true);
   const [profileData, setProfileData] = useState<any>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -158,8 +159,6 @@ export default function LanguageOnboarding() {
     if (step > 1) setStep(s => s - 1);
     else router.push('/learn');
   };
-
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleComplete = async () => {
     setIsSubmitting(true);

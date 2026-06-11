@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getSupabaseUser } from '../../../lib/supabase/server';
 
 type PracticeType = 'multiple_choice' | 'fill_in_the_blank' | 'matching' | 'reorder_sentence' | 'translation';
 
@@ -189,6 +190,11 @@ async function generateWithRetries(genAI: GoogleGenerativeAI, prompt: string) {
 
 export async function POST(request: Request) {
   try {
+    const user = await getSupabaseUser();
+    if (!user) {
+      return NextResponse.json({ success: false, error: 'Unauthorized. Please log in.' }, { status: 401 });
+    }
+
     const body = (await request.json()) as PracticeRequest;
     const topic = compactText(body.topic) || 'beginner foundations';
     const lang = compactText(body.lang) || 'es';

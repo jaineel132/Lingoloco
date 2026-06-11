@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getSupabaseUser } from '../../../lib/supabase/server';
 
 const MODEL_CANDIDATES = ['gemini-2.0-flash', 'gemini-1.5-flash'] as const;
 const RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504]);
@@ -150,6 +151,11 @@ async function generateWithRetries(genAI: GoogleGenerativeAI, prompt: string) {
 
 export async function GET(request: Request) {
   try {
+    const user = await getSupabaseUser();
+    if (!user) {
+      return NextResponse.json({ success: false, error: 'Unauthorized. Please log in.' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const body: FlashcardRequest = {
       lang: searchParams.get('lang') || 'es',

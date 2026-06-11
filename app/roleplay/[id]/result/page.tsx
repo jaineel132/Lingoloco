@@ -20,10 +20,10 @@ export default function RoleplayResult() {
     const raw = sessionStorage.getItem(`roleplay_${lang}`);
     if (raw) {
       try {
-        setSession(JSON.parse(raw));
+        setSession(JSON.parse(raw) as StoredSession);
       } catch { /* ignore */ }
     }
-  }, [lang]);
+  }, [lang]); // eslint-disable-line react-hooks/set-state-in-effect
 
   const userMessageCount = session?.messages.filter(m => m.sender === 'user').length || 0;
   const totalExchanges = session?.messages.length || 1;

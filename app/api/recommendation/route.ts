@@ -5,7 +5,11 @@ import { createSupabaseServerClient, getSupabaseUser } from '../../../lib/supaba
 
 export const dynamic = 'force-dynamic';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+function getGenAI() {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) return null;
+  return new GoogleGenerativeAI(key);
+}
 
 type RecommendationPayload = {
   headline: string;
@@ -85,11 +89,12 @@ export async function GET() {
 
     const progress = buildProgressSummary(userData as ProgressSnapshot);
 
-    if (!process.env.GEMINI_API_KEY) {
+    const genAI = getGenAI();
+    if (!genAI) {
       return NextResponse.json({ success: true, data: fallbackRecommendation(progress) }, { status: 200 });
     }
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const model = genAI.getGenerativeModel({ model: process.env.GEMINI_MODEL || 'gemini-2.0-flash' });
     const prompt = `You are a language-learning coach creating one recommended next step for a learner.
 Learner profile:
 - Name: ${userData.name}

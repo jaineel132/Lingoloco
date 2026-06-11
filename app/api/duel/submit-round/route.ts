@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { processDuelResult } from '@/lib/elo';
+import { createSupabaseAdminClient } from '@/lib/supabase/server';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY as string;
 
-const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-  auth: { persistSession: false },
-});
+const supabaseAdmin = createSupabaseAdminClient();
 
 export async function POST(req: Request) {
   try {
@@ -44,9 +43,14 @@ export async function POST(req: Request) {
       .from('duel_rooms')
       .select('*')
       .eq('id', roomId)
-      .single();
+      .maybeSingle();
 
-    if (fetchError || !room) {
+    if (fetchError) {
+      console.error('Failed to fetch duel room:', fetchError);
+      return NextResponse.json({ error: 'Failed to fetch duel room.' }, { status: 500 });
+    }
+
+    if (!room) {
       return NextResponse.json({ error: 'Duel room not found.' }, { status: 404 });
     }
 

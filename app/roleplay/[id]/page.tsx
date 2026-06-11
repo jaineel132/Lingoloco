@@ -14,13 +14,10 @@ export default function RoleplayDetail({ params }: { params: Promise<{ id: strin
   const unwrappedParams = use(params);
   const { accessToken } = useSupabaseAuth();
   const [langCode, setLangCode] = useState<string>('es');
-  const [profileLoading, setProfileLoading] = useState(true);
+  const [profileLoading, setProfileLoading] = useState(!!accessToken);
   
   useEffect(() => {
-    if (!accessToken) {
-      setProfileLoading(false);
-      return;
-    }
+    if (!accessToken) return;
 
     fetch('/api/user/profile', withSupabaseAuthHeaders(accessToken)).then(r => r.json()).then(data => {
       if(data?.data?.courseId) setLangCode(data.data.courseId);

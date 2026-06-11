@@ -23,26 +23,19 @@ const LANGUAGES = [
 export default function Learn() {
   const router = useRouter();
   const { user, loading, accessToken } = useSupabaseAuth();
-  const [isCheckingOnboarding, setIsCheckingOnboarding] = useState(true);
+  const initialUserKnown = !loading && (!user || !accessToken);
+  const [isCheckingOnboarding, setIsCheckingOnboarding] = useState(!initialUserKnown);
 
   useEffect(() => {
-    if (loading) {
-      return;
-    }
-
-    if (!user || !accessToken) {
-      setIsCheckingOnboarding(false);
-      return;
-    }
+    if (loading) return;
+    if (!user || !accessToken) return;
 
     let isActive = true;
 
     fetch('/api/user/profile', withSupabaseAuthHeaders(accessToken, { cache: 'no-store' }))
       .then((res) => res.json())
       .then((payload) => {
-        if (!isActive) {
-          return;
-        }
+        if (!isActive) return;
 
         if (payload?.success && payload.data?.courseId) {
           router.replace(`/learn/${payload.data.courseId}`);
@@ -50,17 +43,14 @@ export default function Learn() {
           setIsCheckingOnboarding(false);
         }
       })
-      .catch((error) => {
-        console.error(error);
-        if (isActive) {
-          setIsCheckingOnboarding(false);
-        }
+      .catch(() => {
+        if (isActive) setIsCheckingOnboarding(false);
       });
 
     return () => {
       isActive = false;
     };
-  }, [accessToken, user, router]);
+  }, [accessToken, user, loading, router]);
 
   if (loading || isCheckingOnboarding) {
     return (

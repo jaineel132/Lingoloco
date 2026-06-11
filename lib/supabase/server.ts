@@ -12,12 +12,13 @@ function getEnv(name: string) {
   return value;
 }
 
+// User-scoped client: respects RLS policies (uses anon/publishable key)
 export async function createSupabaseServerClient() {
   const cookieStore = await cookies();
 
   return createServerClient(
     getEnv('NEXT_PUBLIC_SUPABASE_URL'),
-    getEnv('SUPABASE_SERVICE_ROLE_KEY'),
+    getEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY'),
     {
       cookies: {
         get(name) {
@@ -42,6 +43,15 @@ export async function createSupabaseServerClient() {
   );
 }
 
+// Admin client: bypasses RLS (uses service role key) — only for server-to-server operations
+export function createSupabaseAdminClient() {
+  return createClient(
+    getEnv('NEXT_PUBLIC_SUPABASE_URL'),
+    getEnv('SUPABASE_SERVICE_ROLE_KEY'),
+    { auth: { persistSession: false } }
+  );
+}
+
 export async function getSupabaseUser() {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.auth.getUser();
@@ -62,7 +72,7 @@ export async function getSupabaseUserFromRequest(request: Request) {
   if (accessToken) {
     const supabase = createClient(
       getEnv('NEXT_PUBLIC_SUPABASE_URL'),
-      getEnv('SUPABASE_SERVICE_ROLE_KEY'),
+      getEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY'),
       {
         global: {
           headers: {

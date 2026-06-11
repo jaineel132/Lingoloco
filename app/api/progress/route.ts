@@ -123,10 +123,14 @@ export async function POST(request: Request) {
       throw updateError;
     }
 
-    const { data: savedUser, error: refetchError } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+    const { data: savedUser, error: refetchError } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
 
     if (refetchError) {
       throw refetchError;
+    }
+
+    if (!savedUser) {
+      return NextResponse.json({ success: false, error: 'Profile not found after update.' }, { status: 500 });
     }
 
     return NextResponse.json(

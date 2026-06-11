@@ -1,11 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 
 function getEnv(name: string) {
-  // Support both Deno and Node env APIs
   if (typeof Deno !== 'undefined' && 'env' in Deno) {
     return Deno.env.get(name);
   }
-
   return process.env[name];
 }
 
@@ -22,9 +20,16 @@ const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
 
 const TIERS = ['bronze', 'silver', 'gold', 'platinum', 'diamond'] as const;
 
+type UserRow = {
+  user_id: string;
+  elo_rating: number;
+  xp_this_week: number;
+  league: string;
+  new_league?: string;
+};
+
 export default async function handler(req: Request) {
   try {
-    // 1) fetch all rankings ordered by xp_this_week desc
     const { data: rows, error } = await supabaseAdmin
       .from('user_rankings')
       .select('user_id, elo_rating, xp_this_week, league')
@@ -32,28 +37,24 @@ export default async function handler(req: Request) {
 
     if (error) throw error;
 
-    const users = (rows ?? []) as Array<any>;
+    const users = (rows ?? []) as UserRow[];
 
-    // group by league
-    const groups: Record<string, Array<any>> = {};
+    const groups: Record<string, UserRow[]> = {};
     for (const u of users) {
       const league = u.league || 'bronze';
-      groups[league] = groups[league] || [];
-      groups[league].push(u);
+      (groups[league] ||= []).push(u);
     }
 
     const leagueWeeksInserts: any[] = [];
-    let processed = 0;
-
+    const leagueChangeUpdates: { user_id: string; new_league: string }[] = [];
+    const allUserIds: string[] = [];
     const today = new Date();
-    const weekStart = today.toISOString().slice(0, 10); // YYYY-MM-DD
+    const weekStart = today.toISOString().slice(0, 10);
 
     for (const tier of TIERS) {
       const group = groups[tier] || [];
       if (group.length === 0) continue;
 
-      // group already ordered by xp_this_week desc because original fetch was ordered globally
-      // but to be safe sort per-group
       group.sort((a, b) => (b.xp_this_week || 0) - (a.xp_this_week || 0));
 
       const n = group.length;
@@ -61,19 +62,15 @@ export default async function handler(req: Request) {
 
       for (let i = 0; i < n; i++) {
         const user = group[i];
-        const rank = i + 1;
+        const tierIndex = TIERS.indexOf(user.league);
         let promoted = false;
         let demoted = false;
         let newLeague = user.league;
 
-        const tierIndex = TIERS.indexOf(user.league);
-
         if (i < boundary && tier !== 'diamond') {
-          // top 20% -> promote
           promoted = true;
           newLeague = TIERS[Math.min(TIERS.length - 1, tierIndex + 1)];
         } else if (i >= n - boundary && tier !== 'bronze') {
-          // bottom 20% -> demote
           demoted = true;
           newLeague = TIERS[Math.max(0, tierIndex - 1)];
         }
@@ -82,31 +79,46 @@ export default async function handler(req: Request) {
           user_id: user.user_id,
           league: user.league,
           xp_earned: user.xp_this_week || 0,
-          rank_in_league: rank,
+          rank_in_league: i + 1,
           promoted,
           demoted,
           week_start: weekStart,
         });
 
-        // update user_rankings row
-        const { error: updErr } = await supabaseAdmin
-          .from('user_rankings')
-          .update({ league: newLeague, xp_this_week: 0 })
-          .eq('user_id', user.user_id);
+        if (newLeague !== user.league) {
+          leagueChangeUpdates.push({ user_id: user.user_id, new_league: newLeague });
+        }
 
-        if (updErr) throw updErr;
-
-        processed++;
+        allUserIds.push(user.user_id);
+        user.new_league = newLeague;
       }
     }
 
-    // bulk insert league_weeks
+    // Batch reset xp_this_week for all users
+    if (allUserIds.length > 0) {
+      const { error: resetErr } = await supabaseAdmin
+        .from('user_rankings')
+        .update({ xp_this_week: 0 })
+        .in('user_id', allUserIds);
+      if (resetErr) throw resetErr;
+    }
+
+    // Apply league changes (only for users whose league changed)
+    for (const upd of leagueChangeUpdates) {
+      const { error: updErr } = await supabaseAdmin
+        .from('user_rankings')
+        .update({ league: upd.new_league })
+        .eq('user_id', upd.user_id);
+      if (updErr) throw updErr;
+    }
+
+    // Bulk insert league_weeks
     if (leagueWeeksInserts.length > 0) {
       const { error: insErr } = await supabaseAdmin.from('league_weeks').insert(leagueWeeksInserts);
       if (insErr) throw insErr;
     }
 
-    return new Response(JSON.stringify({ processed }), { status: 200 });
+    return new Response(JSON.stringify({ processed: allUserIds.length }), { status: 200 });
   } catch (err: any) {
     return new Response(JSON.stringify({ error: err.message || String(err) }), { status: 500 });
   }

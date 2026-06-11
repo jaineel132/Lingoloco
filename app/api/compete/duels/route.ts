@@ -58,143 +58,165 @@ function normalizeNotifications(notifications: unknown): NotificationPayload[] {
 }
 
 export async function GET(request: Request) {
-  const user = await getSupabaseUserFromRequest(request);
+  try {
+    const user = await getSupabaseUserFromRequest(request);
 
-  if (!user?.id || !user.email) {
-    return NextResponse.json({ success: false, error: 'Unauthorized. Please log in.' }, { status: 401, headers: noCacheHeaders() });
-  }
-
-  const supabase = await createSupabaseServerClient();
-
-  const { data: currentUser, error: currentUserError } = await supabase
-    .from('profiles')
-    .select('id,name,email,image,targetLanguage')
-    .eq('id', user.id)
-    .maybeSingle();
-
-  if (currentUserError) {
-    throw currentUserError;
-  }
-
-  if (!currentUser?.email) {
-    return NextResponse.json({ success: false, error: 'User profile not found.' }, { status: 404, headers: noCacheHeaders() });
-  }
-
-  const currentTargetLanguage = String(currentUser.targetLanguage || 'es').trim().toLowerCase();
-
-  const { data: rivals, error: rivalsError } = await supabase
-    .from('profiles')
-    .select('id,name,email,image,targetLanguage,level,xp')
-    .neq('email', currentUser.email)
-    .eq('targetLanguage', currentTargetLanguage)
-    .order('xp', { ascending: false })
-  .order('updatedAt', { ascending: false })
-  .limit(20);
-
-  if (rivalsError) {
-    throw rivalsError;
-  }
-
-  const rivalCards = rivals
-    .filter((rival) => Boolean(rival.email))
-    .map((rival) => ({
-      id: rival.id,
-      name: rival.name || 'Learner',
-      email: rival.email as string,
-      bio: `Practicing ${String(rival.targetLanguage || 'languages').toUpperCase()} at ${rival.level || 'Beginner'} level.`,
-      rank: rival.level || 'Beginner',
-      xp: Number(rival.xp || 0),
-      lang: String(rival.targetLanguage || 'N/A').toUpperCase(),
-      avatar: (rival.name || 'L').trim().charAt(0).toUpperCase() || 'L',
-      image: rival.image || '',
-    }));
-
-  const { data: notificationRows, error: notificationError } = await supabase
-    .from('duel_notifications')
-    .select('*')
-    .eq('userId', currentUser.id)
-    .order('createdAt', { ascending: false });
-
-  if (notificationError) {
-    throw notificationError;
-  }
-
-  const notifications = normalizeNotifications(notificationRows);
-
-  const { data: recentMatches } = await supabase
-    .from('duel_matches')
-    .select('player1_id,player2_id,winner_id,player1_score,player2_score')
-    .or(`player1_id.eq.${user.id},player2_id.eq.${user.id}`)
-    .order('played_at', { ascending: false })
-    .limit(50);
-
-  const opponentStats = new Map<string, { name: string; wins: number; losses: number }>();
-  if (recentMatches) {
-    for (const match of recentMatches) {
-      const opponentId = match.player1_id === user.id ? match.player2_id : match.player1_id;
-      const entry = opponentStats.get(opponentId) || { name: '', wins: 0, losses: 0 };
-      if (match.winner_id === user.id) {
-        entry.wins++;
-      } else {
-        entry.losses++;
-      }
-      opponentStats.set(opponentId, entry);
+    if (!user?.id || !user.email) {
+      return NextResponse.json({ success: false, error: 'Unauthorized. Please log in.' }, { status: 401, headers: noCacheHeaders() });
     }
-  }
 
-  const opponentIds = Array.from(opponentStats.keys());
-  if (opponentIds.length > 0) {
-    const { data: opponentProfiles } = await supabase
+    const supabase = await createSupabaseServerClient();
+
+    const { data: currentUser, error: currentUserError } = await supabase
       .from('profiles')
-      .select('id,name')
-      .in('id', opponentIds);
-    if (opponentProfiles) {
-      for (const profile of opponentProfiles) {
-        const stats = opponentStats.get(profile.id);
-        if (stats) stats.name = profile.name || 'Unknown';
+      .select('id,name,email,image,targetLanguage')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (currentUserError) {
+      console.error('Failed to fetch current user profile:', currentUserError);
+      return NextResponse.json({ success: false, error: 'Failed to load user profile.' }, { status: 500, headers: noCacheHeaders() });
+    }
+
+    if (!currentUser?.email) {
+      return NextResponse.json({ success: false, error: 'User profile not found.' }, { status: 404, headers: noCacheHeaders() });
+    }
+
+    const currentTargetLanguage = String(currentUser.targetLanguage || 'es').trim().toLowerCase();
+
+    const { data: rivals, error: rivalsError } = await supabase
+      .from('profiles')
+      .select('id,name,email,image,targetLanguage,level,xp')
+      .neq('email', currentUser.email)
+      .eq('targetLanguage', currentTargetLanguage)
+      .order('xp', { ascending: false })
+      .order('updatedAt', { ascending: false })
+      .limit(20);
+
+    if (rivalsError) {
+      console.error('Failed to fetch rivals:', rivalsError);
+      return NextResponse.json({ success: false, error: 'Failed to load rivals.' }, { status: 500, headers: noCacheHeaders() });
+    }
+
+    const rivalCards = (rivals || [])
+      .filter((rival) => Boolean(rival.email))
+      .map((rival) => ({
+        id: rival.id,
+        name: rival.name || 'Learner',
+        email: rival.email as string,
+        bio: `Practicing ${String(rival.targetLanguage || 'languages').toUpperCase()} at ${rival.level || 'Beginner'} level.`,
+        rank: rival.level || 'Beginner',
+        xp: Number(rival.xp || 0),
+        lang: String(rival.targetLanguage || 'N/A').toUpperCase(),
+        avatar: (rival.name || 'L').trim().charAt(0).toUpperCase() || 'L',
+        image: rival.image || '',
+      }));
+
+    const { data: notificationRows, error: notificationError } = await supabase
+      .from('duel_notifications')
+      .select('*')
+      .eq('userId', currentUser.id)
+      .order('createdAt', { ascending: false });
+
+    if (notificationError) {
+      console.error('Failed to fetch notifications:', notificationError);
+      return NextResponse.json({ success: false, error: 'Failed to load notifications.' }, { status: 500, headers: noCacheHeaders() });
+    }
+
+    const notifications = normalizeNotifications(notificationRows);
+
+    const { data: recentMatches, error: matchesError } = await supabase
+      .from('duel_matches')
+      .select('player1_id,player2_id,winner_id,player1_score,player2_score')
+      .or(`player1_id.eq.${user.id},player2_id.eq.${user.id}`)
+      .order('played_at', { ascending: false })
+      .limit(50);
+
+    if (matchesError) {
+      console.error('Failed to fetch recent matches:', matchesError);
+    }
+
+    const opponentStats = new Map<string, { name: string; wins: number; losses: number }>();
+    if (recentMatches) {
+      for (const match of recentMatches) {
+        const opponentId = match.player1_id === user.id ? match.player2_id : match.player1_id;
+        const entry = opponentStats.get(opponentId) || { name: '', wins: 0, losses: 0 };
+        if (match.winner_id === user.id) {
+          entry.wins++;
+        } else {
+          entry.losses++;
+        }
+        opponentStats.set(opponentId, entry);
       }
     }
-  }
 
-  const topRivals = Array.from(opponentStats.entries())
-    .map(([id, stats]) => ({ id, name: stats.name || 'Unknown', wins: stats.wins, losses: stats.losses }))
-    .sort((a, b) => (b.wins + b.losses) - (a.wins + a.losses))
-    .slice(0, 5);
-
-  const { data: userRanking } = await supabase
-    .from('user_rankings')
-    .select('wins,losses,win_streak,xp_total,elo_rating,league')
-    .eq('user_id', user.id)
-    .maybeSingle();
-
-  const userStats = userRanking
-    ? {
-        wins: userRanking.wins || 0,
-        losses: userRanking.losses || 0,
-        winStreak: userRanking.win_streak || 0,
-        xpTotal: userRanking.xp_total || 0,
-        eloRating: userRanking.elo_rating || 1000,
-        league: userRanking.league || 'bronze',
-        winRate: (userRanking.wins || 0) + (userRanking.losses || 0) > 0
-          ? Math.round(((userRanking.wins || 0) / ((userRanking.wins || 0) + (userRanking.losses || 0))) * 100)
-          : 0,
-        totalMatches: (userRanking.wins || 0) + (userRanking.losses || 0),
+    const opponentIds = Array.from(opponentStats.keys());
+    if (opponentIds.length > 0) {
+      const { data: opponentProfiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id,name')
+        .in('id', opponentIds);
+      if (profilesError) {
+        console.error('Failed to fetch opponent profiles:', profilesError);
       }
-    : null;
+      if (opponentProfiles) {
+        for (const profile of opponentProfiles) {
+          const stats = opponentStats.get(profile.id);
+          if (stats) stats.name = profile.name || 'Unknown';
+        }
+      }
+    }
 
-  return NextResponse.json(
-    {
-      success: true,
-      data: {
-        rivals: rivalCards,
-        language: currentTargetLanguage,
-        notifications,
-        userStats,
-        topRivals,
+    const topRivals = Array.from(opponentStats.entries())
+      .map(([id, stats]) => ({ id, name: stats.name || 'Unknown', wins: stats.wins, losses: stats.losses }))
+      .sort((a, b) => (b.wins + b.losses) - (a.wins + a.losses))
+      .slice(0, 5);
+
+    const { data: userRanking, error: rankingError } = await supabase
+      .from('user_rankings')
+      .select('wins,losses,win_streak,xp_total,elo_rating,league')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (rankingError) {
+      console.error('Failed to fetch user ranking:', rankingError);
+    }
+
+    const userStats = userRanking
+      ? {
+          wins: userRanking.wins || 0,
+          losses: userRanking.losses || 0,
+          winStreak: userRanking.win_streak || 0,
+          xpTotal: userRanking.xp_total || 0,
+          eloRating: userRanking.elo_rating || 1000,
+          league: userRanking.league || 'bronze',
+          winRate: (userRanking.wins || 0) + (userRanking.losses || 0) > 0
+            ? Math.round(((userRanking.wins || 0) / ((userRanking.wins || 0) + (userRanking.losses || 0))) * 100)
+            : 0,
+          totalMatches: (userRanking.wins || 0) + (userRanking.losses || 0),
+        }
+      : null;
+
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          rivals: rivalCards,
+          language: currentTargetLanguage,
+          notifications,
+          userStats,
+          topRivals,
+        },
       },
-    },
-    { status: 200, headers: noCacheHeaders() }
-  );
+      { status: 200, headers: noCacheHeaders() }
+    );
+  } catch (error: any) {
+    console.error('Duels GET error:', error);
+    return NextResponse.json(
+      { success: false, error: 'Failed to load duel data: ' + (error.message || String(error)) },
+      { status: 500, headers: noCacheHeaders() }
+    );
+  }
 }
 
 export async function POST(request: Request) {
