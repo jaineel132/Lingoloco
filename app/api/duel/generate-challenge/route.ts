@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY as string;
@@ -22,91 +21,99 @@ const LANGUAGE_NAMES: Record<string, string> = {
   hi: 'Hindi',
 };
 
-const FALLBACK_SENTENCES: Record<string, string[]> = {
+type ChallengePair = { english: string; target: string };
+
+const FALLBACK_SENTENCES: Record<string, ChallengePair[]> = {
   es: [
-    'El gato duerme en la silla',
-    'Me gusta leer libros interesantes',
-    'Voy a la playa con mis amigos',
-    'La comida es muy deliciosa aqui',
-    'Mañana tengo una reunion importante',
-    'El sol brilla en el cielo azul',
-    'Quiero aprender a hablar espanol',
-    'Los estudiantes estudian en la biblioteca',
-    'El perro corre rapidamente por el parque',
-    'Nosotros vamos a viajar a Madrid este verano',
-    'Los ninos juegan felices en el jardin',
-    'Ella prepara una cena especial para la familia',
-    'El profesor explica la leccion con claridad',
-    'Ellos compran frutas frescas en el mercado',
-    'Podemos encontrar la solucion trabajando juntos',
-    'La musica clasica relaja la mente y el alma',
-    'El tren sale de la estacion a las ocho',
-    'Los arboles altos protegen del calor del sol',
-    'El agua fresca es importante para la salud',
-    'La biblioteca abre sus puertas a las nueve',
+    { english: 'The cat sleeps on the chair', target: 'El gato duerme en la silla' },
+    { english: 'I like reading interesting books', target: 'Me gusta leer libros interesantes' },
+    { english: 'I go to the beach with my friends', target: 'Voy a la playa con mis amigos' },
+    { english: 'The food is very delicious here', target: 'La comida es muy deliciosa aqui' },
+    { english: 'Tomorrow I have an important meeting', target: 'Manana tengo una reunion importante' },
+    { english: 'The sun shines in the blue sky', target: 'El sol brilla en el cielo azul' },
+    { english: 'I want to learn to speak Spanish', target: 'Quiero aprender a hablar espanol' },
+    { english: 'The students study in the library', target: 'Los estudiantes estudian en la biblioteca' },
+    { english: 'The dog runs quickly through the park', target: 'El perro corre rapidamente por el parque' },
+    { english: 'We are going to travel to Madrid this summer', target: 'Nosotros vamos a viajar a Madrid este verano' },
+    { english: 'The children play happily in the garden', target: 'Los ninos juegan felices en el jardin' },
+    { english: 'She prepares a special dinner for the family', target: 'Ella prepara una cena especial para la familia' },
+    { english: 'The teacher explains the lesson clearly', target: 'El profesor explica la leccion con claridad' },
+    { english: 'They buy fresh fruits at the market', target: 'Ellos compran frutas frescas en el mercado' },
+    { english: 'We can find the solution working together', target: 'Podemos encontrar la solucion trabajando juntos' },
+    { english: 'Classical music relaxes the mind and soul', target: 'La musica clasica relaja la mente y el alma' },
+    { english: 'The train leaves the station at eight o clock', target: 'El tren sale de la estacion a las ocho' },
+    { english: 'The tall trees protect from the heat of the sun', target: 'Los arboles altos protegen del calor del sol' },
+    { english: 'Fresh water is important for health', target: 'El agua fresca es importante para la salud' },
+    { english: 'The library opens its doors at nine o clock', target: 'La biblioteca abre sus puertas a las nueve' },
   ],
   fr: [
-    'Le chat dort sur la chaise',
-    'Jaime lire des livres interessants',
-    'Je vais a la plage avec mes amis',
-    'La nourriture est tres delicieuse ici',
-    'Demain jai une reunion importante',
-    'Le soleil brille dans le ciel bleu',
-    'Je veux apprendre a parler francais',
-    'Ma mere prepare un gateau delicieux',
-    'Nous allons voyager a Paris cet ete',
-    'Les enfants jouent dans le jardin',
-    'Il y a un beau jardin devant la maison',
-    'Le professeur explique la lecon clairement',
-    'Ils achete des fruits frais au marche',
-    'Nous pouvons resoudre ce probleme ensemble',
-    'La musique classique apaise lesprit',
-    'Le train part de la gare a huit heures',
-    'Leau fraiche est importante pour la sante',
+    { english: 'The cat sleeps on the chair', target: 'Le chat dort sur la chaise' },
+    { english: 'I like reading interesting books', target: "J'aime lire des livres interessants" },
+    { english: 'I go to the beach with my friends', target: 'Je vais a la plage avec mes amis' },
+    { english: 'The food is very delicious here', target: 'La nourriture est tres delicieuse ici' },
+    { english: 'Tomorrow I have an important meeting', target: 'Demain j ai une reunion importante' },
+    { english: 'The sun shines in the blue sky', target: 'Le soleil brille dans le ciel bleu' },
+    { english: 'I want to learn to speak French', target: 'Je veux apprendre a parler francais' },
+    { english: 'My mother prepares a delicious cake', target: 'Ma mere prepare un gateau delicieux' },
+    { english: 'We are going to travel to Paris this summer', target: 'Nous allons voyager a Paris cet ete' },
+    { english: 'The children play in the garden', target: 'Les enfants jouent dans le jardin' },
+    { english: 'There is a beautiful garden in front of the house', target: 'Il y a un beau jardin devant la maison' },
+    { english: 'The teacher explains the lesson clearly', target: 'Le professeur explique la lecon clairement' },
+    { english: 'They buy fresh fruits at the market', target: 'Ils achetent des fruits frais au marche' },
+    { english: 'We can solve this problem together', target: 'Nous pouvons resoudre ce probleme ensemble' },
+    { english: 'Classical music soothes the mind', target: 'La musique classique apaise lesprit' },
+    { english: 'The train leaves the station at eight o clock', target: 'Le train part de la gare a huit heures' },
+    { english: 'Fresh water is important for health', target: 'L eau fraiche est importante pour la sante' },
   ],
   de: [
-    'Die Katze schlaft auf dem Stuhl',
-    'Ich lese gerne interessante Bucher',
-    'Ich gehe mit meinen Freunden zum Strand',
-    'Das Essen ist hier sehr lecker',
-    'Morgen habe ich eine wichtige Besprechung',
-    'Die Sonne scheint am blauen Himmel',
-    'Ich mochte Deutsch sprechen lernen',
-    'Meine Mutter backt einen leckeren Kuchen',
-    'Wir reisen diesen Sommer nach Berlin',
-    'Die Kinder spielen glucklich im Garten',
-    'Der Lehrer erklart die Lektion klar',
-    'Sie kaufen frische Obst auf dem Markt',
-    'Klassische Musik beruhigt den Geist',
+    { english: 'The cat sleeps on the chair', target: 'Die Katze schlaft auf dem Stuhl' },
+    { english: 'I like reading interesting books', target: 'Ich lese gerne interessante Bucher' },
+    { english: 'I go to the beach with my friends', target: 'Ich gehe mit meinen Freunden zum Strand' },
+    { english: 'The food is very delicious here', target: 'Das Essen ist hier sehr lecker' },
+    { english: 'Tomorrow I have an important meeting', target: 'Morgen habe ich eine wichtige Besprechung' },
+    { english: 'The sun shines in the blue sky', target: 'Die Sonne scheint am blauen Himmel' },
+    { english: 'I want to learn to speak German', target: 'Ich mochte Deutsch sprechen lernen' },
+    { english: 'My mother bakes a delicious cake', target: 'Meine Mutter backt einen leckeren Kuchen' },
+    { english: 'We are traveling to Berlin this summer', target: 'Wir reisen diesen Sommer nach Berlin' },
+    { english: 'The children play happily in the garden', target: 'Die Kinder spielen glucklich im Garten' },
+    { english: 'The teacher explains the lesson clearly', target: 'Der Lehrer erklart die Lektion klar' },
+    { english: 'They buy fresh fruit at the market', target: 'Sie kaufen frisches Obst auf dem Markt' },
+    { english: 'Classical music calms the mind', target: 'Klassische Musik beruhigt den Geist' },
   ],
   ja: [
-    'Watashi wa hon o yomu no ga suki desu',
-    'Kirei na hana ga niwa ni saite imasu',
-    'Ashita wa juuyou na kaigi ga arimasu',
-    'Taiyou ga aoi sora ni kagayaite imasu',
-    'Nihongo o hanasu koto o manabitai desu',
-    'Kodomo tachi ga kouen de asonde imasu',
-    'Sensei ga jugyou o teinei ni setsumei shimasu',
-    'Kare wa mainichi supootsu o shimasu',
-    'Haha ga oishii ryouri o tsukurimashita',
+    { english: 'I like reading books', target: 'Watashi wa hon o yomu no ga suki desu' },
+    { english: 'Beautiful flowers are blooming in the garden', target: 'Kirei na hana ga niwa ni saite imasu' },
+    { english: 'Tomorrow there is an important meeting', target: 'Ashita wa juuyou na kaigi ga arimasu' },
+    { english: 'The sun is shining in the blue sky', target: 'Taiyou ga aoi sora ni kagayaite imasu' },
+    { english: 'I want to learn to speak Japanese', target: 'Nihongo o hanasu koto o manabitai desu' },
+    { english: 'The children are playing in the park', target: 'Kodomo tachi ga kouen de asonde imasu' },
+    { english: 'The teacher explains the lesson carefully', target: 'Sensei ga jugyou o teinei ni setsumei shimasu' },
+    { english: 'He exercises every day', target: 'Kare wa mainichi supootsu o shimasu' },
+    { english: 'My mother made a delicious meal', target: 'Haha ga oishii ryouri o tsukurimashita' },
   ],
 };
 
 function getFallbackChallenge(langCode: string, round: number, previousChallenges: string[] = []): string {
   const pool = FALLBACK_SENTENCES[langCode] || FALLBACK_SENTENCES['es'];
   const wordCountTarget = round <= 1 ? 8 : round <= 2 ? 12 : round <= 3 ? 16 : round <= 4 ? 20 : 25;
-  const candidates = pool.filter(s => {
-    const count = s.split(/\s+/).length;
-    return Math.abs(count - wordCountTarget) <= 3 && !previousChallenges.includes(s);
+  const candidates = pool.filter(pair => {
+    const count = pair.target.split(/\s+/).length;
+    return Math.abs(count - wordCountTarget) <= 3 && !previousChallenges.includes(pair.target);
   });
-  if (candidates.length === 0) {
-    const unused = pool.filter(s => !previousChallenges.includes(s));
+  
+  let chosen: ChallengePair;
+  if (candidates.length > 0) {
+    chosen = candidates[Math.floor(Math.random() * candidates.length)];
+  } else {
+    const unused = pool.filter(pair => !previousChallenges.includes(pair.target));
     if (unused.length > 0) {
-      return unused[Math.floor(Math.random() * unused.length)];
+      chosen = unused[Math.floor(Math.random() * unused.length)];
+    } else {
+      chosen = pool[Math.floor(Math.random() * pool.length)];
     }
-    return pool[Math.floor(Math.random() * pool.length)];
   }
-  return candidates[Math.floor(Math.random() * candidates.length)];
+  
+  return JSON.stringify({ english: chosen.english, target: chosen.target });
 }
 
 export async function POST(req: Request) {
@@ -139,44 +146,54 @@ export async function POST(req: Request) {
       difficultyDesc = '22-25 words, advanced difficulty, complex sentence structure.';
     }
 
-    const prompt = `You are a professional language tutor. Generate a sentence in ${languageName} for a typing duel game.
-The difficulty of the sentence must correspond to Round ${roundNum}:
+    const prompt = `You are a professional language tutor. Generate a sentence pair for a translation typing duel game.
+The difficulty must correspond to Round ${roundNum}:
 - Requirements: ${difficultyDesc}
 
-Make sure it's a natural, grammatically correct sentence in ${languageName}.
-Ensure that you DO NOT repeat or resemble these previous challenges: ${JSON.stringify(previousChallenges || [])}.
+Generate a natural, grammatically correct sentence in ${languageName} AND its English translation.
+Ensure you DO NOT repeat or resemble these previous challenges: ${JSON.stringify(previousChallenges || [])}.
 
-CRITICAL: Return ONLY the raw generated sentence in ${languageName}. Do NOT translate it to English, do NOT include markdown formatting, do NOT include quotation marks, do NOT provide explanations, and do NOT include any other text whatsoever. Just the sentence itself.`;
+CRITICAL: Return ONLY in this exact format: ENGLISH_SENTENCE ||| TARGET_LANGUAGE_SENTENCE
+Example: "Hello, how are you?" ||| "Hola, ¿cómo estás?"
+Do NOT include markdown, quotes, explanations, or any other text. Just the two sentences separated by " ||| ".`;
 
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const apiKey = process.env.GEMINI_API_KEY;
     const MODEL_CANDIDATES = ['gemini-2.0-flash', 'gemini-1.5-flash'] as const;
 
     let sentence = '';
     const errors: string[] = [];
 
     for (const modelName of MODEL_CANDIDATES) {
-      const model = genAI.getGenerativeModel({ model: modelName });
-
       for (let attempt = 1; attempt <= 3; attempt++) {
         try {
-          const result = await model.generateContent(prompt);
-          let rawText = result.response.text().trim();
-          if (rawText.startsWith('```')) {
-            rawText = rawText.replace(/```[a-zA-Z]*\n?/, '').replace(/\n?```/, '').trim();
-          }
-          sentence = rawText.replace(/^["'«“‘](.*)["'»”’]$/, '$1').trim();
-          if (sentence) break;
-        } catch (e: any) {
-          const status = typeof e?.status === 'number' ? e.status : 0;
-          const isQuotaError = status === 429;
-          const errorMessage = String(e?.message || e);
-          errors.push(`${modelName} (attempt ${attempt}): ${errorMessage}`);
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+          const geminiRes = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+          });
 
-          // Skip retries for unsupported model errors (e.g., "Cannot read 'image.png' - model does not support image input")
-          if (status === 404 || isQuotaError || errorMessage.includes('image.png') || errorMessage.includes('does not support image')) {
+          if (!geminiRes.ok) {
+            const status = geminiRes.status;
+            errors.push(`${modelName} (attempt ${attempt}): HTTP ${status}`);
+            if (status === 404 || status === 429) break;
+            if (attempt >= 3) continue;
+            await new Promise((r) => setTimeout(r, 300 * attempt));
+            continue;
+          }
+
+          const geminiJson = await geminiRes.json();
+          const rawText = (geminiJson?.candidates?.[0]?.content?.parts?.[0]?.text || '').trim();
+          if (!rawText) continue;
+
+          const parts = rawText.split('|||').map((s: string) => s.trim());
+          if (parts.length === 2 && parts[0] && parts[1]) {
+            sentence = JSON.stringify({ english: parts[0], target: parts[1] });
             break;
           }
-
+        } catch (e: any) {
+          const errorMessage = String(e?.message || e);
+          errors.push(`${modelName} (attempt ${attempt}): ${errorMessage}`);
           if (attempt >= 3) continue;
           await new Promise((r) => setTimeout(r, 300 * attempt));
         }
@@ -209,7 +226,18 @@ CRITICAL: Return ONLY the raw generated sentence in ${languageName}. Do NOT tran
 
     if (updateError) throw updateError;
 
-    return NextResponse.json({ success: true, challenge: sentence });
+    let challengePair: ChallengePair;
+    try {
+      challengePair = JSON.parse(sentence);
+    } catch {
+      challengePair = { english: sentence, target: sentence };
+    }
+
+    return NextResponse.json({
+      success: true,
+      english: challengePair.english,
+      target: challengePair.target,
+    });
   } catch (error: any) {
     console.error('Generate Challenge API error:', error);
     const message = error.message || String(error);

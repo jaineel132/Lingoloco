@@ -35,6 +35,8 @@ type DuelRoom = {
   updated_at: string;
 };
 
+type ChallengePair = { english: string; target: string };
+
 export default function DuelSessionPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const supabase = createBrowserClient();
@@ -75,9 +77,39 @@ export default function DuelSessionPage({ params }: { params: Promise<{ id: stri
   const [showRoundOverlay, setShowRoundOverlay] = useState(false);
   const [roundOverlayTimer, setRoundOverlayTimer] = useState<number | null>(null);
 
+  // Challenge pair (English to type, Target language to validate against)
+  const [challengePair, setChallengePair] = useState<ChallengePair>({ english: '', target: '' });
+
+  // League progress data
+  const [leagueProgress, setLeagueProgress] = useState<{
+    currentElo: number;
+    currentLeague: string;
+    nextLeague: string | null;
+    eloInLeague: number;
+    eloForNextLeague: number;
+    progressPercent: number;
+  } | null>(null);
+
   const languageName = useMemo(() => {
     return room?.language || opponent?.targetLanguage || currentUser?.targetLanguage || 'Spanish';
   }, [room?.language, opponent?.targetLanguage, currentUser?.targetLanguage]);
+
+  // League thresholds
+  const LEAGUE_THRESHOLDS: Record<string, number> = {
+    bronze: 1100,
+    silver: 1300,
+    gold: 1600,
+    platinum: 2000,
+    diamond: Infinity,
+  };
+  const LEAGUE_ORDER = ['bronze', 'silver', 'gold', 'platinum', 'diamond'];
+  const LEAGUE_EMOJIS: Record<string, string> = {
+    bronze: '🥉',
+    silver: '🥈',
+    gold: '🥇',
+    platinum: '💎',
+    diamond: '👑',
+  };
 
   // Load user and determine if URL parameter is a Room ID or Opponent ID
   useEffect(() => {
@@ -268,6 +300,34 @@ export default function DuelSessionPage({ params }: { params: Promise<{ id: stri
     };
   }, [supabase, room?.player1_id, room?.player2_id]);
 
+  // Polling fallback for room updates (in case realtime is delayed or unreliable)
+  const pollRoomRef = useRef<{ lastUpdated: string | null; timer: ReturnType<typeof setInterval> | null }>({
+    lastUpdated: null,
+    timer: null,
+  });
+
+  useEffect(() => {
+    if (!roomIdRef.current) return;
+
+    pollRoomRef.current.lastUpdated = room?.updated_at || null;
+
+    const interval = setInterval(async () => {
+      const { data } = await supabase
+        .from('duel_rooms')
+        .select('*')
+        .eq('id', roomIdRef.current!)
+        .maybeSingle();
+      if (data && data.updated_at !== pollRoomRef.current.lastUpdated) {
+        pollRoomRef.current.lastUpdated = data.updated_at;
+        setRoom(data);
+      }
+    }, 2000);
+
+    pollRoomRef.current.timer = interval;
+
+    return () => clearInterval(interval);
+  }, [supabase]);
+
   // Handle Room State Transitions (Countdown, Round complete, Typing timers)
   useEffect(() => {
     if (!room) return;
@@ -289,9 +349,26 @@ export default function DuelSessionPage({ params }: { params: Promise<{ id: stri
       setCompleted(false);
       setShowRoundOverlay(false);
       
-      // Store previous challenges to prevent duplicates
-      if (room.current_challenge && !previousChallenges.includes(room.current_challenge)) {
-        setPreviousChallenges((prev) => [...prev, room.current_challenge!]);
+      // Parse challenge pair from stored JSON
+      if (room.current_challenge) {
+        try {
+          const parsed = JSON.parse(room.current_challenge);
+          setChallengePair({ english: parsed.english || room.current_challenge, target: parsed.target || room.current_challenge });
+          setPreviousChallenges((prev) => {
+            if (parsed.target && !prev.includes(parsed.target)) {
+              return [...prev, parsed.target];
+            }
+            return prev;
+          });
+        } catch {
+          setChallengePair({ english: room.current_challenge, target: room.current_challenge });
+          setPreviousChallenges((prev) => {
+            if (!prev.includes(room.current_challenge!)) {
+              return [...prev, room.current_challenge!];
+            }
+            return prev;
+          });
+        }
       }
     }
 
@@ -368,15 +445,57 @@ export default function DuelSessionPage({ params }: { params: Promise<{ id: stri
     }
   }, [roundOverlayTimer, currentUser, room, supabase]);
 
+  // Fetch league progress when match finishes
+  useEffect(() => {
+    if (room?.status !== 'finished' || !currentUser?.id) return;
+
+    const fetchLeagueData = async () => {
+      try {
+        const { data } = await supabase
+          .from('user_rankings')
+          .select('elo_rating, league')
+          .eq('user_id', currentUser.id)
+          .maybeSingle();
+
+        if (data) {
+          const elo = data.elo_rating || 1000;
+          const currentLeague = data.league || 'bronze';
+          const currentIdx = LEAGUE_ORDER.indexOf(currentLeague);
+          const nextLeague = currentIdx < LEAGUE_ORDER.length - 1 ? LEAGUE_ORDER[currentIdx + 1] : null;
+          const prevThreshold = currentIdx > 0 ? LEAGUE_THRESHOLDS[LEAGUE_ORDER[currentIdx - 1]] : 0;
+          const nextThreshold = nextLeague ? LEAGUE_THRESHOLDS[currentLeague] : elo;
+          const eloInLeague = elo - prevThreshold;
+          const eloForNextLeague = nextThreshold - prevThreshold;
+          const progressPercent = nextLeague
+            ? Math.min(100, Math.round((eloInLeague / eloForNextLeague) * 100))
+            : 100;
+
+          setLeagueProgress({
+            currentElo: elo,
+            currentLeague,
+            nextLeague,
+            eloInLeague: Math.max(0, eloInLeague),
+            eloForNextLeague,
+            progressPercent,
+          });
+        }
+      } catch (err) {
+        console.error('Failed to fetch league data:', err);
+      }
+    };
+
+    void fetchLeagueData();
+  }, [room?.status, currentUser?.id, supabase]);
+
   // Typing Input handler
   const handleTypingChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (completed || room?.status !== 'in_progress' || !room.current_challenge) return;
+    if (completed || room?.status !== 'in_progress' || !challengePair.target) return;
 
     const val = e.target.value;
-    const challenge = room.current_challenge;
+    const targetText = challengePair.target;
 
-    // Limit typed length to challenge sentence length
-    if (val.length > challenge.length) return;
+    // Limit typed length to target sentence length
+    if (val.length > targetText.length) return;
 
     setInputVal(val);
 
@@ -388,8 +507,8 @@ export default function DuelSessionPage({ params }: { params: Promise<{ id: stri
       }
     }
 
-    // Check if player fully and correctly finished the sentence
-    if (val === challenge) {
+    // Check if player fully and correctly finished the translation
+    if (val === targetText) {
       setCompleted(true);
       const timeMs = startTime ? Date.now() - startTime : 0;
       void submitRoundTime(timeMs);
@@ -453,15 +572,15 @@ export default function DuelSessionPage({ params }: { params: Promise<{ id: stri
     }
   };
 
-  // Character coloring display algorithm
+  // Character coloring display algorithm - shows English text
   const renderChallengeText = () => {
-    if (!room?.current_challenge) return null;
+    const displayText = challengePair.english || challengePair.target || '';
+    if (!displayText) return null;
     
-    const challenge = room.current_challenge;
-    return challenge.split('').map((char, index) => {
+    return displayText.split('').map((char, index) => {
       let charClass = styles.charNotTyped;
       if (index < inputVal.length) {
-        charClass = inputVal[index] === char ? styles.charCorrect : styles.charIncorrect;
+        charClass = inputVal[index] === challengePair.target[index] ? styles.charCorrect : styles.charIncorrect;
       }
       return (
         <span key={`${index}-${char}`} className={charClass}>
@@ -556,7 +675,7 @@ export default function DuelSessionPage({ params }: { params: Promise<{ id: stri
             <p className={styles.kicker}>Language Speed Arena</p>
             <h1>Typing Duel</h1>
             <p className={styles.heroCopy}>
-              Type the sentence exactly as shown as fast as possible. First to finish wins the round. 5 rounds total!
+              Read the English sentence and type the {languageName} translation as fast as possible. First to finish wins the round.
             </p>
           </div>
             <div className={styles.heroStat}>
@@ -658,7 +777,7 @@ export default function DuelSessionPage({ params }: { params: Promise<{ id: stri
                 <input
                   type="text"
                   className={styles.typingInput}
-                  placeholder="Type the sentence here..."
+                  placeholder={`Type the ${languageName} translation here...`}
                   value={inputVal}
                   onChange={handleTypingChange}
                   disabled={completed}
@@ -738,22 +857,59 @@ export default function DuelSessionPage({ params }: { params: Promise<{ id: stri
               </div>
 
               <div className={styles.eloChangesBox}>
-                <h3>Elo Rating Updates</h3>
+                <h3>Elo Rating Update</h3>
                 <div className={styles.eloChangesGrid}>
                   <div className={styles.eloPlayerRow}>
-                    <span>You</span>
+                    <span>Your Change</span>
                     <strong className={myEloChange && myEloChange >= 0 ? styles.eloPlus : styles.eloMinus}>
                       {myEloChange && myEloChange >= 0 ? `+${myEloChange}` : myEloChange} Elo
                     </strong>
                   </div>
-                  <div className={styles.eloPlayerRow}>
-                    <span>{opponent?.name || 'Rival'}</span>
-                    <strong className={oppEloChange && oppEloChange >= 0 ? styles.eloPlus : styles.eloMinus}>
-                      {oppEloChange && oppEloChange >= 0 ? `+${oppEloChange}` : oppEloChange} Elo
-                    </strong>
-                  </div>
                 </div>
               </div>
+
+              {/* League Progress Bar */}
+              {leagueProgress && (
+                <div className={styles.leagueProgressSection}>
+                  <div className={styles.leagueProgressHeader}>
+                    <span className={styles.leagueBadge}>
+                      {LEAGUE_EMOJIS[leagueProgress.currentLeague] || '🏅'} {leagueProgress.currentLeague.charAt(0).toUpperCase() + leagueProgress.currentLeague.slice(1)}
+                    </span>
+                    {leagueProgress.nextLeague && (
+                      <span className={styles.nextLeagueLabel}>
+                        Next: {LEAGUE_EMOJIS[leagueProgress.nextLeague] || '🏅'} {leagueProgress.nextLeague.charAt(0).toUpperCase() + leagueProgress.nextLeague.slice(1)}
+                      </span>
+                    )}
+                  </div>
+                  
+                  <div className={styles.leagueProgressTrack}>
+                    <div
+                      className={styles.leagueProgressFill}
+                      style={{ width: `${leagueProgress.progressPercent}%` }}
+                    />
+                    <div className={styles.leagueProgressMarkers}>
+                      {LEAGUE_ORDER.map((league, idx) => {
+                        const threshold = LEAGUE_THRESHOLDS[LEAGUE_ORDER[idx - 1]] || 0;
+                        const pos = idx === 0 ? 0 : Math.min(100, ((threshold - (LEAGUE_THRESHOLDS[LEAGUE_ORDER[0] as keyof typeof LEAGUE_THRESHOLDS] || 0)) / (leagueProgress.eloForNextLeague + leagueProgress.eloInLeague)) * 100);
+                        return (
+                          <div
+                            key={league}
+                            className={`${styles.leagueMarker} ${league === leagueProgress.currentLeague ? styles.leagueMarkerActive : ''}`}
+                            style={{ left: `${Math.min(95, idx * 25)}%` }}
+                          >
+                            <span className={styles.leagueMarkerEmoji}>{LEAGUE_EMOJIS[league]}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  
+                  <div className={styles.leagueProgressInfo}>
+                    <span>{leagueProgress.eloInLeague} / {leagueProgress.eloForNextLeague} ELO in {leagueProgress.currentLeague}</span>
+                    <span>{leagueProgress.currentElo} Total ELO</span>
+                  </div>
+                </div>
+              )}
 
               <button
                 type="button"

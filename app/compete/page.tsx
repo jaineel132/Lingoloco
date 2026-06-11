@@ -104,6 +104,28 @@ export default function CompetePage() {
     ? String(myRanking.league).charAt(0).toUpperCase() + String(myRanking.league).slice(1)
     : '';
 
+  // League progress computation
+  const LEAGUE_ORDER = ['bronze', 'silver', 'gold', 'platinum', 'diamond'] as const;
+  const LEAGUE_THRESHOLDS: Record<string, { min: number; next: number | null }> = {
+    bronze: { min: 0, next: 1100 },
+    silver: { min: 1100, next: 1300 },
+    gold: { min: 1300, next: 1600 },
+    platinum: { min: 1600, next: 2000 },
+    diamond: { min: 2000, next: null },
+  };
+  const LEAGUE_EMOJIS: Record<string, string> = {
+    bronze: '🥉', silver: '🥈', gold: '🥇', platinum: '💎', diamond: '👑',
+  };
+
+  const currentLeague = myRanking?.league || 'bronze';
+  const currentElo = myRanking?.elo_rating || 1000;
+  const leagueInfo = LEAGUE_THRESHOLDS[currentLeague] || LEAGUE_THRESHOLDS.bronze;
+  const eloInLeague = currentElo - leagueInfo.min;
+  const range = leagueInfo.next ? leagueInfo.next - leagueInfo.min : 1;
+  const progressPercent = leagueInfo.next ? Math.min(100, Math.round((eloInLeague / range) * 100)) : 100;
+  const currentIdx = LEAGUE_ORDER.indexOf(currentLeague);
+  const nextLeagueName = currentIdx < LEAGUE_ORDER.length - 1 ? LEAGUE_ORDER[currentIdx + 1] : null;
+
   return (
     <div className={styles.container}>
       <div className={styles.header}>
@@ -114,12 +136,37 @@ export default function CompetePage() {
       <div className={styles.grid}>
         {/* League Card */}
         <div className={`${styles.card} ${styles.leagueCard}`}>
-          <div className={styles.leagueInfo}>
-            <h2>{leagueDisplay ? `${leagueDisplay} League` : 'League'}</h2>
-            <p>Top 20% promoted this week. You are in the promotion zone!</p>
+          <div className={styles.leagueInfoRow}>
+            <div className={styles.leagueInfo}>
+              <h2>{leagueDisplay ? `${leagueDisplay} League` : 'League'}</h2>
+              <p>Top 20% promoted this week. You are in the promotion zone!</p>
+            </div>
+            <div className={styles.leagueBadge}>
+              {LEAGUE_EMOJIS[currentLeague] || '🏅'}
+            </div>
           </div>
-          <div className={styles.leagueBadge}>
-            {leagueDisplay === 'Diamond' ? '💎' : leagueDisplay === 'Platinum' ? '🔷' : '🏅'}
+          {/* League Progress Bar */}
+          <div className={styles.leagueProgressSection}>
+            <div className={styles.leagueProgressHeader}>
+              <span className={styles.leagueProgressLabel}>
+                {eloInLeague} / {range} ELO {nextLeagueName ? `to ${nextLeagueName.charAt(0).toUpperCase() + nextLeagueName.slice(1)}` : 'MAX'}
+              </span>
+              <span className={styles.leagueEloTotal}>{currentElo} Total ELO</span>
+            </div>
+            <div className={styles.leagueProgressTrack}>
+              <div className={styles.leagueProgressFill} style={{ width: `${progressPercent}%` }} />
+              <div className={styles.leagueProgressMarkers}>
+                {LEAGUE_ORDER.map((league, idx) => (
+                  <div
+                    key={league}
+                    className={`${styles.leagueMarker} ${league === currentLeague ? styles.leagueMarkerActive : ''} ${idx === 0 ? styles.leagueMarkerFirst : ''}`}
+                    style={{ left: idx === 0 ? '0%' : idx === LEAGUE_ORDER.length - 1 ? '100%' : `${(idx / (LEAGUE_ORDER.length - 1)) * 100}%` }}
+                  >
+                    <span className={styles.leagueMarkerEmoji}>{LEAGUE_EMOJIS[league]}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 

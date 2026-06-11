@@ -109,7 +109,7 @@ BEGIN
   END IF;
 
   INSERT INTO public.duel_rooms (player1_id, player2_id, language, status)
-  VALUES (sender_profile_id, p_recipient_id, COALESCE((SELECT targetLanguage FROM public.profiles WHERE id = p_recipient_id), 'Spanish'), 'waiting')
+  VALUES (sender_profile_id, p_recipient_id, COALESCE((SELECT "targetLanguage" FROM public.profiles WHERE id = p_recipient_id), 'Spanish'), 'waiting')
   RETURNING id INTO new_room_id;
 
   UPDATE public.duel_notifications
