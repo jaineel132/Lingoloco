@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/supabase/server';
 
 export async function GET(req: Request) {
   try {
@@ -7,6 +7,7 @@ export async function GET(req: Request) {
     const type = (url.searchParams.get('type') || 'global') as 'global' | 'friends';
 
     const supabase = await createSupabaseServerClient();
+    const admin = createSupabaseAdminClient();
 
     if (type === 'global') {
       const { data: rankings, error } = await supabase
@@ -20,8 +21,9 @@ export async function GET(req: Request) {
       }
 
       const userIds = Array.from(new Set((rankings ?? []).map((row) => row.user_id).filter(Boolean)));
+      // Use admin client for cross-user profile reads (RLS restricts profiles to own row)
       const { data: profiles, error: profilesError } = userIds.length
-        ? await supabase.from('profiles').select('id,name,image').in('id', userIds)
+        ? await admin.from('profiles').select('id,name,image').in('id', userIds)
         : { data: [], error: null };
 
       if (profilesError) {
@@ -89,7 +91,7 @@ export async function GET(req: Request) {
 
     const userIds = Array.from(new Set((rankings ?? []).map((row) => row.user_id).filter(Boolean)));
     const { data: profiles, error: profilesError } = userIds.length
-      ? await supabase.from('profiles').select('id,name,image').in('id', userIds)
+      ? await admin.from('profiles').select('id,name,image').in('id', userIds)
       : { data: [], error: null };
 
     if (profilesError) {

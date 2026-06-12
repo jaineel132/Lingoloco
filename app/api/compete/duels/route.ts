@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createSupabaseServerClient, getSupabaseUserFromRequest } from '../../../../lib/supabase/server';
+import { createSupabaseServerClient, createSupabaseAdminClient, getSupabaseUserFromRequest } from '../../../../lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -66,6 +66,7 @@ export async function GET(request: Request) {
     }
 
     const supabase = await createSupabaseServerClient();
+    const admin = createSupabaseAdminClient();
 
     const { data: currentUser, error: currentUserError } = await supabase
       .from('profiles')
@@ -84,7 +85,8 @@ export async function GET(request: Request) {
 
     const currentTargetLanguage = String(currentUser.targetLanguage || 'es').trim().toLowerCase();
 
-    const { data: rivals, error: rivalsError } = await supabase
+    // Use admin client for cross-user reads (RLS restricts profiles to own row)
+    const { data: rivals, error: rivalsError } = await admin
       .from('profiles')
       .select('id,name,email,image,targetLanguage,level,xp')
       .neq('email', currentUser.email)
@@ -152,7 +154,7 @@ export async function GET(request: Request) {
 
     const opponentIds = Array.from(opponentStats.keys());
     if (opponentIds.length > 0) {
-      const { data: opponentProfiles, error: profilesError } = await supabase
+      const { data: opponentProfiles, error: profilesError } = await admin
         .from('profiles')
         .select('id,name')
         .in('id', opponentIds);

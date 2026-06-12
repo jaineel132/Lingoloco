@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { COMPETE_SQUADS, getSquadById } from '../../../../lib/competeSquads';
-import { createSupabaseServerClient, getSupabaseUser } from '../../../../lib/supabase/server';
+import { createSupabaseServerClient, createSupabaseAdminClient, getSupabaseUser } from '../../../../lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,8 +10,10 @@ type JoinChallengeRequest = {
 
 async function buildSquadPayload(userEmail?: string) {
   const supabase = await createSupabaseServerClient();
+  // Admin client needed for cross-user profile reads (RLS restricts profiles to own row)
+  const admin = createSupabaseAdminClient();
   const squadIds = COMPETE_SQUADS.map((squad) => squad.id);
-  const { data: squadRows, error } = await supabase.from('profiles').select('squadId').in('squadId', squadIds);
+  const { data: squadRows, error } = await admin.from('profiles').select('squadId').in('squadId', squadIds);
 
   if (error) {
     throw error;
@@ -27,7 +29,8 @@ async function buildSquadPayload(userEmail?: string) {
   let joinedSquadId: number | null = null;
 
   if (userEmail) {
-    const { data: user, error: userError } = await supabase.from('profiles').select('squadId').eq('email', userEmail).maybeSingle();
+    // Own-profile read via email — use admin client because regular RLS filters by id, not email
+    const { data: user, error: userError } = await admin.from('profiles').select('squadId').eq('email', userEmail).maybeSingle();
     if (userError) {
       throw userError;
     }
@@ -102,6 +105,7 @@ export async function POST(request: Request) {
     }
 
     const supabase = await createSupabaseServerClient();
+    const admin = createSupabaseAdminClient();
     const { data: profile, error: profileError } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
 
     if (profileError) {
@@ -117,7 +121,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, data: payload, message: 'Already joined this squad.' }, { status: 200 });
     }
 
-    const { data: squadMembers, error: countError } = await supabase.from('profiles').select('id').eq('squadId', squadId);
+    const { data: squadMembers, error: countError } = await admin.from('profiles').select('id').eq('squadId', squadId);
 
     if (countError) {
       throw countError;

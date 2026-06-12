@@ -14,16 +14,23 @@ type StoredSession = {
 export default function RoleplayResult() {
   const params = useParams();
   const lang = (params?.id as string) || 'es';
-  const [session, setSession] = useState<StoredSession | null>(null);
+
+  const [session, setSession] = useState<StoredSession | null>(() => {
+    if (typeof window === 'undefined') return null;
+    const raw = sessionStorage.getItem(`roleplay_${lang}`);
+    if (!raw) return null;
+    try { return JSON.parse(raw) as StoredSession; } catch { return null; }
+  });
 
   useEffect(() => {
+    if (session) return;
     const raw = sessionStorage.getItem(`roleplay_${lang}`);
     if (raw) {
       try {
         setSession(JSON.parse(raw) as StoredSession);
       } catch { /* ignore */ }
     }
-  }, [lang]); // eslint-disable-line react-hooks/set-state-in-effect
+  }, [lang, session]); // eslint-disable-line react-hooks/set-state-in-effect
 
   const userMessageCount = session?.messages.filter(m => m.sender === 'user').length || 0;
   const totalExchanges = session?.messages.length || 1;

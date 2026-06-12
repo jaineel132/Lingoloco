@@ -23,11 +23,27 @@ export async function GET() {
       throw error;
     }
 
-    if (!latestProfile) {
-      return NextResponse.json({ success: false, error: "No user profile found" }, { status: 404 });
+    if (latestProfile) {
+      return NextResponse.json({ success: true, data: latestProfile }, { status: 200 });
     }
 
-    return NextResponse.json({ success: true, data: latestProfile }, { status: 200 });
+    // Fallback: user may have a profiles row with targetLanguage but no onboarding_profiles row
+    const { data: fallbackProfile, error: fbError } = await supabase
+      .from('profiles')
+      .select('targetLanguage')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (fbError) throw fbError;
+
+    if (fallbackProfile?.targetLanguage) {
+      return NextResponse.json({
+        success: true,
+        data: { courseId: fallbackProfile.targetLanguage },
+      }, { status: 200 });
+    }
+
+    return NextResponse.json({ success: false, error: "No user profile found" }, { status: 404 });
   } catch (error: any) {
     console.error("API Error fetching user profile:", error);
     return NextResponse.json(
