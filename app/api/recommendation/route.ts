@@ -1,15 +1,9 @@
 import { NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { buildProgressSummary, type ProgressSnapshot } from '../../../lib/progress';
 import { createSupabaseServerClient, getSupabaseUser } from '../../../lib/supabase/server';
+import { fetchGroq } from '../../../lib/groq';
 
 export const dynamic = 'force-dynamic';
-
-function getGenAI() {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) return null;
-  return new GoogleGenerativeAI(key);
-}
 
 type RecommendationPayload = {
   headline: string;
@@ -89,12 +83,10 @@ export async function GET() {
 
     const progress = buildProgressSummary(userData as ProgressSnapshot);
 
-    const genAI = getGenAI();
-    if (!genAI) {
+    if (!process.env.GROQ_API_KEY) {
       return NextResponse.json({ success: true, data: fallbackRecommendation(progress) }, { status: 200 });
     }
 
-    const model = genAI.getGenerativeModel({ model: process.env.GEMINI_MODEL || 'gemini-2.0-flash' });
     const prompt = `You are a language-learning coach creating one recommended next step for a learner.
 Learner profile:
 - Name: ${userData.name}
@@ -122,8 +114,8 @@ Return ONLY a raw JSON object with this exact structure:
 
 Choose the next most useful session/set based on the learner's current progress. Keep it beginner-friendly and specific.`;
 
-    const result = await model.generateContent(prompt);
-    const recommendation = parseRecommendation(result.response.text(), progress);
+    const responseText = await fetchGroq(prompt);
+    const recommendation = parseRecommendation(responseText, progress);
 
     return NextResponse.json(
       { success: true, data: recommendation },

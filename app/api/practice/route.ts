@@ -1,11 +1,8 @@
 import { NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { getSupabaseUser } from '../../../lib/supabase/server';
+import { fetchGroq } from '../../../lib/groq';
 
 type PracticeType = 'multiple_choice' | 'fill_in_the_blank' | 'matching' | 'reorder_sentence' | 'translation';
-
-const MODEL_CANDIDATES = ['gemini-2.0-flash', 'gemini-1.5-flash'] as const;
-const RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504]);
 
 type PracticeRequest = {
   topic?: string;
@@ -40,6 +37,128 @@ const LANGUAGE_NAMES: Record<string, string> = {
   hi: 'Hindi',
 };
 
+const FALLBACK_QUESTIONS: PracticeQuestion[] = [
+  {
+    type: 'multiple_choice',
+    title: 'Choose the greeting',
+    scenario: 'You meet someone for the first time.',
+    question: 'Which phrase should you say?',
+    audioText: 'Hello',
+    options: ['Hello', 'Goodbye', 'Please', 'Thanks'],
+    answer: 'Hello',
+    explanation: 'This is the correct greeting when meeting someone.',
+  },
+  {
+    type: 'fill_in_the_blank',
+    title: 'Complete the sentence',
+    scenario: 'You want to ask politely.',
+    question: '___, can you help me?',
+    audioText: 'Please, can you help me?',
+    options: ['Please', 'No', 'Here', 'Soon'],
+    answer: 'Please',
+    explanation: 'The polite word belongs in the blank.',
+  },
+  {
+    type: 'matching',
+    title: 'Match the meaning',
+    scenario: 'You are learning core vocabulary.',
+    question: 'Choose the English meaning.',
+    audioText: 'Good morning',
+    options: ['Good morning', 'Book', 'Water', 'Table'],
+    answer: 'Good morning',
+    explanation: 'This is the correct match.',
+  },
+  {
+    type: 'reorder_sentence',
+    title: 'Put the words in order',
+    scenario: 'You want to introduce yourself.',
+    question: 'Arrange the words to make a correct sentence.',
+    audioText: 'I am a student.',
+    words: ['a', 'student', 'am', 'I'],
+    answer: 'I am a student',
+    explanation: 'This is the natural word order.',
+  },
+  {
+    type: 'translation',
+    title: 'Translation',
+    scenario: 'You need to ask for water politely.',
+    question: 'Translate: I would like water, please.',
+    audioText: 'I would like water, please.',
+    acceptedAnswers: ['I would like water, please.', 'I want water, please.'],
+    answer: 'I would like water, please.',
+    explanation: 'This is the beginner-friendly translation.',
+  },
+  {
+    type: 'multiple_choice',
+    title: 'Choose the number',
+    scenario: 'You are ordering food.',
+    question: 'Which number means "two"?',
+    audioText: 'Two',
+    options: ['One', 'Two', 'Three', 'Four'],
+    answer: 'Two',
+    explanation: 'Two is the correct number.',
+  },
+  {
+    type: 'fill_in_the_blank',
+    title: 'Complete the phrase',
+    scenario: 'You want to thank someone.',
+    question: '___, for your help.',
+    audioText: 'Thank you, for your help.',
+    options: ['Thank you', 'Goodbye', 'Maybe', 'Later'],
+    answer: 'Thank you',
+    explanation: 'Thank you expresses gratitude.',
+  },
+  {
+    type: 'matching',
+    title: 'Match the color',
+    scenario: 'You are describing objects.',
+    question: 'Choose the color.',
+    audioText: 'Red',
+    options: ['Red', 'Big', 'Fast', 'Tall'],
+    answer: 'Red',
+    explanation: 'Red is a color word.',
+  },
+  {
+    type: 'reorder_sentence',
+    title: 'Build the question',
+    scenario: 'You need to ask a question.',
+    question: 'Put the words in order.',
+    audioText: 'Where is the bathroom?',
+    words: ['the', 'Where', 'is', 'bathroom', '?'],
+    answer: 'Where is the bathroom?',
+    explanation: 'This is the correct question word order.',
+  },
+  {
+    type: 'translation',
+    title: 'Translate the greeting',
+    scenario: 'You are greeting someone.',
+    question: 'Translate: How are you?',
+    audioText: 'How are you?',
+    acceptedAnswers: ['How are you?', "How're you?"],
+    answer: 'How are you?',
+    explanation: 'This is a common greeting.',
+  },
+];
+
+function shuffleArray<T>(arr: T[]): T[] {
+  const copy = [...arr];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
+// Shuffle fallback question options so answer isn't always first
+for (const q of FALLBACK_QUESTIONS) {
+  if (q.options && q.options.length > 1) {
+    q.options = shuffleArray(q.options);
+  }
+  if (q.words && q.words.length > 1) {
+    q.words = shuffleArray(q.words);
+  }
+}
+
 function stripCodeFences(text: string) {
   if (text.startsWith('```json')) {
     return text.replace(/```json\n?/, '').replace(/\n?```/, '').trim();
@@ -61,12 +180,20 @@ function normalizeOptions(value: unknown, answer: string, section: string) {
     ? value.map((option) => compactText(option)).filter(Boolean)
     : [];
 
-  const uniqueOptions = Array.from(new Set([answer, ...options]));
-  while (uniqueOptions.length < 4) {
-    uniqueOptions.push(`${section} option ${uniqueOptions.length + 1}`);
+  const allOptions = [answer, ...options.filter((opt) => opt !== answer)];
+  while (allOptions.length < 4) {
+    allOptions.push(`${section} option ${allOptions.length + 1}`);
   }
 
-  return uniqueOptions.slice(0, 4);
+  const uniqueOptions = Array.from(new Set(allOptions)).slice(0, 4);
+
+  // Fisher-Yates shuffle so the correct answer isn't always at position 0
+  for (let i = uniqueOptions.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [uniqueOptions[i], uniqueOptions[j]] = [uniqueOptions[j], uniqueOptions[i]];
+  }
+
+  return uniqueOptions;
 }
 
 function normalizeWords(value: unknown, answer: string) {
@@ -133,61 +260,6 @@ function normalizeQuestions(payload: unknown, section: string) {
   return questions;
 }
 
-function extractErrorStatus(error: unknown) {
-  if (!error || typeof error !== 'object') {
-    return undefined;
-  }
-
-  const maybeStatus = (error as { status?: unknown }).status;
-  if (typeof maybeStatus === 'number') {
-    return maybeStatus;
-  }
-
-  const maybeMessage = (error as { message?: unknown }).message;
-  if (typeof maybeMessage === 'string') {
-    const match = maybeMessage.match(/\[(\d{3})\]/);
-    if (match) {
-      return Number(match[1]);
-    }
-  }
-
-  return undefined;
-}
-
-function sleep(ms: number) {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-}
-
-async function generateWithRetries(genAI: GoogleGenerativeAI, prompt: string) {
-  let lastError: unknown;
-
-  for (const modelName of MODEL_CANDIDATES) {
-    const model = genAI.getGenerativeModel({ model: modelName });
-
-    for (let attempt = 1; attempt <= 3; attempt += 1) {
-      try {
-        const result = await model.generateContent(prompt);
-        return result.response.text().trim();
-      } catch (error: unknown) {
-        lastError = error;
-        const status = extractErrorStatus(error);
-        const retryable = typeof status === 'number' ? RETRYABLE_STATUSES.has(status) : false;
-        const isLastAttempt = attempt === 3;
-
-        if (!retryable || isLastAttempt) {
-          break;
-        }
-
-        await sleep(350 * attempt);
-      }
-    }
-  }
-
-  throw lastError ?? new Error('AI generation failed after retries');
-}
-
 export async function POST(request: Request) {
   try {
     const user = await getSupabaseUser();
@@ -212,11 +284,9 @@ export async function POST(request: Request) {
 
     const languageName = compactText(body.languageName) || LANGUAGE_NAMES[lang] || 'the selected language';
     
-    if (!process.env.GEMINI_API_KEY) {
-      return NextResponse.json({ success: false, error: "GEMINI_API_KEY is not configured in .env.local" }, { status: 500 });
+    if (!process.env.GROQ_API_KEY) {
+      return NextResponse.json({ success: false, error: "GROQ_API_KEY is not configured in .env.local" }, { status: 500 });
     }
-
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
     const prompt = `You are an expert beginner language tutor.
 Create exactly 10 practice exercises for a student learning ${languageName} (${lang}).
@@ -235,6 +305,7 @@ Use a mix of these exercise types:
 Rules:
 - Each object must include: type, title, scenario, question, audioText, answer, explanation.
 - multiple_choice, fill_in_the_blank, and matching must also include options with exactly 4 strings.
+- Randomize the position of the correct answer within the 4 options so it's not always first.
 - reorder_sentence must also include words as a shuffled array of the words in the correct answer.
 - translation must also include acceptedAnswers as an array of correct variants.
 - Make the answer unambiguous and clearly teach the learner the target language.
@@ -295,30 +366,24 @@ Example structure:
 ]
 Generate exactly 10 varied exercises, and make sure the rest follow the same standards.`;
 
-    const text = await generateWithRetries(genAI, prompt);
+    const text = await fetchGroq(prompt, { retries: 3 });
 
     try {
       const data = JSON.parse(stripCodeFences(text));
       const normalized = normalizeQuestions(data, section);
       return NextResponse.json({ success: true, data: normalized });
     } catch {
-      console.error("Failed to parse Gemini response:", text);
+      console.error("Failed to parse Groq response:", text);
       return NextResponse.json({ success: false, error: "Failed to parse AI response as JSON" }, { status: 500 });
     }
 
   } catch (error: unknown) {
     console.error("Practice API Error:", error);
-    const status = extractErrorStatus(error);
     const message = error instanceof Error ? error.message : 'Unknown practice API error';
 
-    if (status === 503) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'AI tutor is busy right now. Please try again in a few seconds.',
-        },
-        { status: 503 }
-      );
+    if (message.includes('status 429')) {
+      console.warn('Groq rate limited — returning fallback questions');
+      return NextResponse.json({ success: true, data: FALLBACK_QUESTIONS });
     }
 
     return NextResponse.json({ success: false, error: message }, { status: 500 });

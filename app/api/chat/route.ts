@@ -1,11 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
-
-function getGenAI() {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) return null;
-  return new GoogleGenerativeAI(key);
-}
+import { fetchGroq } from '../../../lib/groq';
 
 type ChatMessage = {
   sender: 'ai' | 'user';
@@ -50,12 +44,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const genAI = getGenAI();
-    if (!genAI) {
-      return NextResponse.json({ error: 'Gemini API key is not configured.' }, { status: 500 });
+    if (!process.env.GROQ_API_KEY) {
+      return NextResponse.json({ error: 'Groq API key is not configured.' }, { status: 500 });
     }
-
-    const model = genAI.getGenerativeModel({ model: process.env.GEMINI_MODEL || 'gemini-2.0-flash' });
 
     const resolvedMode = mode === 'tutor' || !scenario ? 'tutor' : 'roleplay';
     const historyPrompt = buildConversationHistory(messages);
@@ -90,8 +81,7 @@ Conversation:
 ${historyPrompt}`;
     }
 
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text();
+    const responseText = await fetchGroq(prompt);
     const parsedResponse = safeParseJson(responseText);
 
     if (!parsedResponse) {

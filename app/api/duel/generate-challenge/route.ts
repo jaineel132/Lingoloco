@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseAdminClient } from '@/lib/supabase/server';
+import { fetchGroq } from '@/lib/groq';
 
 const supabaseAdmin = createSupabaseAdminClient();
 
@@ -120,8 +121,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'roomId, language, and round are required.' }, { status: 400 });
     }
 
-    if (!process.env.GEMINI_API_KEY) {
-      return NextResponse.json({ error: 'GEMINI_API_KEY is not configured.' }, { status: 500 });
+    if (!process.env.GROQ_API_KEY) {
+      return NextResponse.json({ error: 'GROQ_API_KEY is not configured.' }, { status: 500 });
     }
 
     const langCode = String(language).trim().toLowerCase();
@@ -152,49 +153,20 @@ CRITICAL: Return ONLY in this exact format: ENGLISH_SENTENCE ||| TARGET_LANGUAGE
 Example: "Hello, how are you?" ||| "Hola, ¿cómo estás?"
 Do NOT include markdown, quotes, explanations, or any other text. Just the two sentences separated by " ||| ".`;
 
-    const apiKey = process.env.GEMINI_API_KEY;
-    const MODEL_CANDIDATES = ['gemini-2.0-flash', 'gemini-1.5-flash'] as const;
-
     let sentence = '';
-    const errors: string[] = [];
 
-    for (const modelName of MODEL_CANDIDATES) {
-      for (let attempt = 1; attempt <= 3; attempt++) {
-        try {
-          const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
-          const geminiRes = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-          });
-
-          if (!geminiRes.ok) {
-            const status = geminiRes.status;
-            errors.push(`${modelName} (attempt ${attempt}): HTTP ${status}`);
-            if (status === 404 || status === 429) break;
-            if (attempt >= 3) continue;
-            await new Promise((r) => setTimeout(r, 300 * attempt));
-            continue;
-          }
-
-          const geminiJson = await geminiRes.json();
-          const rawText = (geminiJson?.candidates?.[0]?.content?.parts?.[0]?.text || '').trim();
-          if (!rawText) continue;
-
-          const parts = rawText.split('|||').map((s: string) => s.trim());
-          if (parts.length === 2 && parts[0] && parts[1]) {
-            sentence = JSON.stringify({ english: parts[0], target: parts[1] });
-            break;
-          }
-        } catch (e: any) {
-          const errorMessage = String(e?.message || e);
-          errors.push(`${modelName} (attempt ${attempt}): ${errorMessage}`);
-          if (attempt >= 3) continue;
-          await new Promise((r) => setTimeout(r, 300 * attempt));
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const rawText = await fetchGroq(prompt, { retries: 1 });
+        const parts = rawText.split('|||').map((s: string) => s.trim());
+        if (parts.length === 2 && parts[0] && parts[1]) {
+          sentence = JSON.stringify({ english: parts[0], target: parts[1] });
+          break;
         }
+      } catch {
+        if (attempt >= 3) break;
+        await new Promise((r) => setTimeout(r, 300 * attempt));
       }
-
-      if (sentence) break;
     }
 
     if (!sentence) {

@@ -1,9 +1,6 @@
 import { NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { getSupabaseUser } from '../../../lib/supabase/server';
-
-const MODEL_CANDIDATES = ['gemini-2.0-flash', 'gemini-1.5-flash'] as const;
-const RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504]);
+import { fetchGroq } from '../../../lib/groq';
 
 type FlashcardRequest = {
   lang?: string;
@@ -40,27 +37,6 @@ const FALLBACK_FLASHCARDS: Flashcard[] = [
   { id: 4, word: 'Trabajo', pronunciation: 'tra-ba-ho', translation: 'Work', example: 'Tengo mucho trabajo hoy.', lang: 'Spanish' },
   { id: 5, word: 'Familia', pronunciation: 'fa-mee-lya', translation: 'Family', example: 'Mi familia vive cerca.', lang: 'Spanish' },
 ];
-
-function extractErrorStatus(error: unknown) {
-  if (!error || typeof error !== 'object') {
-    return undefined;
-  }
-
-  const status = (error as { status?: unknown }).status;
-  if (typeof status === 'number') {
-    return status;
-  }
-
-  const message = (error as { message?: unknown }).message;
-  if (typeof message === 'string') {
-    const match = message.match(/\[(\d{3})\]/);
-    if (match) {
-      return Number(match[1]);
-    }
-  }
-
-  return undefined;
-}
 
 function stripCodeFences(text: string) {
   if (text.startsWith('```json')) {
@@ -115,40 +91,6 @@ function normalizeFlashcards(payload: unknown, languageName: string, count: numb
   return uniqueByWord.slice(0, count).map((card, index) => ({ ...card, id: index + 1 }));
 }
 
-function sleep(ms: number) {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-}
-
-async function generateWithRetries(genAI: GoogleGenerativeAI, prompt: string) {
-  let lastError: unknown;
-
-  for (const modelName of MODEL_CANDIDATES) {
-    const model = genAI.getGenerativeModel({ model: modelName });
-
-    for (let attempt = 1; attempt <= 3; attempt += 1) {
-      try {
-        const result = await model.generateContent(prompt);
-        return result.response.text().trim();
-      } catch (error: unknown) {
-        lastError = error;
-        const status = extractErrorStatus(error);
-        const retryable = typeof status === 'number' ? RETRYABLE_STATUSES.has(status) : false;
-        const isLastAttempt = attempt === 3;
-
-        if (!retryable || isLastAttempt) {
-          break;
-        }
-
-        await sleep(350 * attempt);
-      }
-    }
-  }
-
-  throw lastError ?? new Error('AI generation failed after retries');
-}
-
 export async function GET(request: Request) {
   try {
     const user = await getSupabaseUser();
@@ -167,11 +109,9 @@ export async function GET(request: Request) {
     const languageName = compactText(body.languageName) || LANGUAGE_NAMES[lang] || 'Spanish';
     const count = Math.max(3, Math.min(10, Math.round(body.count || 5)));
 
-    if (!process.env.GEMINI_API_KEY) {
+    if (!process.env.GROQ_API_KEY) {
       return NextResponse.json({ success: true, data: FALLBACK_FLASHCARDS.slice(0, count) }, { status: 200 });
     }
-
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
     const prompt = `You are a beginner language tutor.
 Create exactly ${count} unique flashcards for learners studying ${languageName} (${lang}).
@@ -198,7 +138,7 @@ Return format:
   }
 ]`;
 
-    const text = await generateWithRetries(genAI, prompt);
+    const text = await fetchGroq(prompt, { retries: 3 });
     const parsed = JSON.parse(stripCodeFences(text));
     const cards = normalizeFlashcards(parsed, languageName, count);
 
