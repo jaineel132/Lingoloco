@@ -61,6 +61,15 @@ export default function RoleplaySession({ params }: { params: Promise<{ id: stri
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const key = `roleplay_${unwrappedParams.id}_start`;
+      if (!sessionStorage.getItem(key)) {
+        sessionStorage.setItem(key, String(Math.floor(Date.now() / 1000)));
+      }
+    }
+  }, [unwrappedParams.id]);
+
+  useEffect(() => {
     if (!accessToken) {
       return;
     }

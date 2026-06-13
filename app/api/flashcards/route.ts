@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseUser } from '../../../lib/supabase/server';
 import { fetchGroq } from '../../../lib/groq';
+import { checkRateLimit, getRateLimitKey } from '../../../lib/rateLimit';
 
 type FlashcardRequest = {
   lang?: string;
@@ -96,6 +97,11 @@ export async function GET(request: Request) {
     const user = await getSupabaseUser();
     if (!user) {
       return NextResponse.json({ success: false, error: 'Unauthorized. Please log in.' }, { status: 401 });
+    }
+
+    const rateLimit = checkRateLimit(getRateLimitKey(user.id, 'flashcards'), 10, 60_000);
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ success: false, error: 'Too many requests. Please wait before generating more flashcards.' }, { status: 429 });
     }
 
     const { searchParams } = new URL(request.url);

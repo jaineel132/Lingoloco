@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseUser } from '../../../lib/supabase/server';
 import { fetchGroq } from '../../../lib/groq';
+import { checkRateLimit, getRateLimitKey } from '../../../lib/rateLimit';
 
 type PracticeType = 'multiple_choice' | 'fill_in_the_blank' | 'matching' | 'reorder_sentence' | 'translation';
 
@@ -265,6 +266,11 @@ export async function POST(request: Request) {
     const user = await getSupabaseUser();
     if (!user) {
       return NextResponse.json({ success: false, error: 'Unauthorized. Please log in.' }, { status: 401 });
+    }
+
+    const rateLimit = checkRateLimit(getRateLimitKey(user.id, 'practice'), 10, 60_000);
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ success: false, error: 'Too many requests. Please wait before generating more exercises.' }, { status: 429 });
     }
 
     const body = (await request.json()) as PracticeRequest;

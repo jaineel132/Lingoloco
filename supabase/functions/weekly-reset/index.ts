@@ -1,10 +1,7 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from 'npm:@supabase/supabase-js';
 
 function getEnv(name: string) {
-  if (typeof Deno !== 'undefined' && 'env' in Deno) {
-    return Deno.env.get(name);
-  }
-  return process.env[name];
+  return Deno.env.get(name);
 }
 
 const SUPABASE_URL = getEnv('SUPABASE_URL') || getEnv('NEXT_PUBLIC_SUPABASE_URL');

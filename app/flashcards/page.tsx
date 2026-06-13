@@ -1,12 +1,11 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
 import styles from './page.module.css';
 import { ArrowLeft, RotateCw, X, Check, Volume2 } from 'lucide-react';
 import Link from 'next/link';
 import { useSupabaseAuth } from '@/components/AuthProvider';
-import { createBrowserClient } from '@/lib/supabase/browser';
 
 type Flashcard = {
   id: number;
@@ -42,6 +41,29 @@ export default function FlashcardPage() {
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-200, 200], [-10, 10]);
   const swipeOpacity = useTransform(x, [-100, 0, 100], [0.5, 1, 0.5]);
+
+  const recordFlashcardProgress = useCallback(async () => {
+    if (!accessToken) return;
+    try {
+      await fetch('/api/progress', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({
+          activityType: 'flashcard',
+          sessionMinutes: cards.length,
+          xpEarned: Math.round(cards.length * 3),
+          score: cards.length,
+          totalQuestions: cards.length,
+        }),
+      });
+    } catch { /* non-critical */ }
+  }, [accessToken, cards.length]);
+
+  useEffect(() => {
+    if (completed) {
+      void recordFlashcardProgress();
+    }
+  }, [completed, recordFlashcardProgress]);
 
   const currentCard = cards[currentIndex];
   const progress = cards.length === 0 ? 0 : completed ? 100 : (currentIndex / cards.length) * 100;
@@ -185,7 +207,7 @@ export default function FlashcardPage() {
           <div className={styles.completionContainer}>
             <div className={styles.trophy}>🏆</div>
             <h1 className={styles.finishTitle}>Deck Completed!</h1>
-            <p className={styles.finishText}>You've successfully reviewed all your flashcards for today. Keep up the great work and your knowledge will grow!</p>
+                    <p className={styles.finishText}>You&apos;ve successfully reviewed all your flashcards for today. Keep up the great work and your knowledge will grow!</p>
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
               <button className={styles.finishBtn} onClick={() => fetchDeck(targetLang)}>New AI Deck</button>
               <Link href={`/dashboard/${targetLang}`}>
@@ -264,7 +286,7 @@ export default function FlashcardPage() {
                     </div>
                   </div>
                   <h2 className={styles.translation}>{currentCard.translation}</h2>
-                  <p className={styles.example}>"{currentCard.example}"</p>
+                  <p className={styles.example}>&quot;{currentCard.example}&quot;</p>
                   <div className={styles.hint}>
                     <RotateCw size={16} /> Tap to turn back
                   </div>

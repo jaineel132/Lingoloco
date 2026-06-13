@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchGroq } from '../../../lib/groq';
+import { checkRateLimit, getRateLimitKey } from '../../../lib/rateLimit';
+import { getSupabaseUserFromRequest } from '../../../lib/supabase/server';
 
 type ChatMessage = {
   sender: 'ai' | 'user';
@@ -38,6 +40,16 @@ function buildConversationHistory(messages: ChatMessage[]) {
 
 export async function POST(req: NextRequest) {
   try {
+    const user = await getSupabaseUserFromRequest(req);
+    if (!user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const rateLimit = checkRateLimit(getRateLimitKey(user.id, 'chat'), 20, 60_000);
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many requests. Please wait before sending more messages.' }, { status: 429 });
+    }
+
     const { messages, scenario, targetLanguage, mode } = (await req.json()) as ChatRequestBody;
 
     if (!messages || !Array.isArray(messages) || messages.length === 0 || !targetLanguage) {

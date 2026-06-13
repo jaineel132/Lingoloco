@@ -59,6 +59,10 @@ function normalizeNotifications(notifications: unknown): NotificationPayload[] {
 
 export async function GET(request: Request) {
   try {
+    const url = new URL(request.url);
+    const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10));
+    const pageSize = Math.max(5, Math.min(50, parseInt(url.searchParams.get('pageSize') || '20', 10)));
+
     const user = await getSupabaseUserFromRequest(request);
 
     if (!user?.id || !user.email) {
@@ -86,14 +90,17 @@ export async function GET(request: Request) {
     const currentTargetLanguage = String(currentUser.targetLanguage || 'es').trim().toLowerCase();
 
     // Use admin client for cross-user reads (RLS restricts profiles to own row)
-    const { data: rivals, error: rivalsError } = await admin
+    const fromRow = (page - 1) * pageSize;
+    const toRow = fromRow + pageSize - 1;
+
+    const { data: rivals, error: rivalsError, count: rivalCount } = await admin
       .from('profiles')
-      .select('id,name,email,image,targetLanguage,level,xp')
+      .select('id,name,email,image,targetLanguage,level,xp', { count: 'exact', head: false })
       .neq('email', currentUser.email)
       .eq('targetLanguage', currentTargetLanguage)
       .order('xp', { ascending: false })
       .order('updatedAt', { ascending: false })
-      .limit(20);
+      .range(fromRow, toRow);
 
     if (rivalsError) {
       console.error('Failed to fetch rivals:', rivalsError);
@@ -199,6 +206,8 @@ export async function GET(request: Request) {
         }
       : null;
 
+    const totalRivals = rivalCount ?? rivalCards.length;
+
     return NextResponse.json(
       {
         success: true,
@@ -208,6 +217,12 @@ export async function GET(request: Request) {
           notifications,
           userStats,
           topRivals,
+          pagination: {
+            page,
+            pageSize,
+            total: totalRivals,
+            totalPages: Math.ceil(totalRivals / pageSize),
+          },
         },
       },
       { status: 200, headers: noCacheHeaders() }

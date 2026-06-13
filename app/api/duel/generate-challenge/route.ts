@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { createSupabaseAdminClient } from '@/lib/supabase/server';
+import { createSupabaseAdminClient, getSupabaseUserFromRequest } from '@/lib/supabase/server';
 import { fetchGroq } from '@/lib/groq';
+import { checkRateLimit, getRateLimitKey } from '@/lib/rateLimit';
 
 const supabaseAdmin = createSupabaseAdminClient();
 
@@ -114,6 +115,16 @@ function getFallbackChallenge(langCode: string, round: number, previousChallenge
 
 export async function POST(req: Request) {
   try {
+    const user = await getSupabaseUserFromRequest(req);
+    if (!user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const rateLimit = checkRateLimit(getRateLimitKey(user.id, 'generate-challenge'), 10, 60_000);
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many requests. Please wait.' }, { status: 429 });
+    }
+
     const body = await req.json();
     const { roomId, language, round, previousChallenges } = body;
 

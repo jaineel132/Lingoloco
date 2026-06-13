@@ -5,6 +5,7 @@ import { createSupabaseServerClient, getSupabaseUser } from '../../../lib/supaba
 export const dynamic = 'force-dynamic';
 
 type ProgressRequestBody = {
+  activityType?: 'practice' | 'flashcard' | 'roleplay';
   sessionMinutes?: number;
   xpEarned?: number;
   score?: number;
@@ -90,34 +91,74 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'User profile not found in database.' }, { status: 404 });
     }
 
-    const updates = applyPracticeCompletion(currentProfile as ProgressSnapshot, {
-      sessionMinutes: Number.isFinite(body.sessionMinutes ?? NaN) ? Number(body.sessionMinutes) : 10,
-      xpEarned: calculateXpEarned(body),
-      sessionId: Number.isFinite(body.sessionId ?? NaN) ? Number(body.sessionId) : 1,
-      setId: Number.isFinite(body.setId ?? NaN) ? Number(body.setId) : 1,
-      sessionLabel: body.sessionLabel,
-      setLabel: body.setLabel,
-      totalSessions: Number.isFinite(body.totalSessions ?? NaN) ? Number(body.totalSessions) : 10,
-      setsPerSession: Number.isFinite(body.setsPerSession ?? NaN) ? Number(body.setsPerSession) : 7,
-    });
+    const activityType = body.activityType || 'practice';
+    const now = new Date().toISOString();
+    const todayKey = new Date().toISOString().slice(0, 10);
+    const prevKey = (currentProfile as ProgressSnapshot).lastPracticeDateKey || '';
+    const isSameDay = prevKey === todayKey;
 
-    const { error: updateError } = await supabase.from('profiles').update({
-      xp: updates.xp,
-      streak: updates.streak,
-      dailyProgressMinutes: updates.dailyProgressMinutes,
-      dailyXpToday: updates.dailyXpToday,
-      dailyScenariosToday: updates.dailyScenariosToday,
-      lessonsCompleted: updates.lessonsCompleted,
-      totalTimeHours: updates.totalTimeHours,
-      lastPracticeDateKey: updates.lastPracticeDateKey,
-      lastPracticeAt: updates.lastPracticeAt,
-      practiceCompletedSetKeys: updates.practiceCompletedSetKeys,
-      practiceCompletedSessionIds: updates.practiceCompletedSessionIds,
-      lastPracticeSessionId: updates.lastPracticeSessionId,
-      lastPracticeSetId: updates.lastPracticeSetId,
-      lastPracticeSessionLabel: updates.lastPracticeSessionLabel,
-      lastPracticeSetLabel: updates.lastPracticeSetLabel,
-    }).eq('id', user.id);
+    let updates: Record<string, unknown>;
+
+    if (activityType === 'practice') {
+      const practiceUpdates = applyPracticeCompletion(currentProfile as ProgressSnapshot, {
+        sessionMinutes: Number.isFinite(body.sessionMinutes ?? NaN) ? Number(body.sessionMinutes) : 10,
+        xpEarned: calculateXpEarned(body),
+        sessionId: Number.isFinite(body.sessionId ?? NaN) ? Number(body.sessionId) : 1,
+        setId: Number.isFinite(body.setId ?? NaN) ? Number(body.setId) : 1,
+        sessionLabel: body.sessionLabel,
+        setLabel: body.setLabel,
+        totalSessions: Number.isFinite(body.totalSessions ?? NaN) ? Number(body.totalSessions) : 10,
+        setsPerSession: Number.isFinite(body.setsPerSession ?? NaN) ? Number(body.setsPerSession) : 7,
+      });
+      updates = {
+        xp: practiceUpdates.xp,
+        streak: practiceUpdates.streak,
+        dailyProgressMinutes: practiceUpdates.dailyProgressMinutes,
+        dailyXpToday: practiceUpdates.dailyXpToday,
+        dailyScenariosToday: practiceUpdates.dailyScenariosToday,
+        lessonsCompleted: practiceUpdates.lessonsCompleted,
+        totalTimeHours: practiceUpdates.totalTimeHours,
+        lastPracticeDateKey: practiceUpdates.lastPracticeDateKey,
+        lastPracticeAt: practiceUpdates.lastPracticeAt,
+        practiceCompletedSetKeys: practiceUpdates.practiceCompletedSetKeys,
+        practiceCompletedSessionIds: practiceUpdates.practiceCompletedSessionIds,
+        lastPracticeSessionId: practiceUpdates.lastPracticeSessionId,
+        lastPracticeSetId: practiceUpdates.lastPracticeSetId,
+        lastPracticeSessionLabel: practiceUpdates.lastPracticeSessionLabel,
+        lastPracticeSetLabel: practiceUpdates.lastPracticeSetLabel,
+      };
+    } else {
+      const xpGain = calculateXpEarned(body);
+      const prevXp = currentProfile.xp || 0;
+      const prevDailyXp = isSameDay ? (currentProfile.dailyXpToday || 0) : 0;
+      const prevDailyScenarios = isSameDay ? (currentProfile.dailyScenariosToday || 0) : 0;
+      const prevDailyMinutes = isSameDay ? (currentProfile.dailyProgressMinutes || 0) : 0;
+      const prevStreak = currentProfile.streak || 0;
+      const prevLessons = currentProfile.lessonsCompleted || 0;
+      const prevHours = currentProfile.totalTimeHours || 0;
+      const sessionMinutes = Math.max(1, Math.round(body.sessionMinutes ?? 5));
+      const isConsecutiveDay = (() => {
+        if (!prevKey) return true;
+        const prev = new Date(`${prevKey}T00:00:00Z`);
+        const curr = new Date(`${todayKey}T00:00:00Z`);
+        const diff = (curr.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24);
+        return diff <= 1;
+      })();
+
+      updates = {
+        xp: prevXp + xpGain,
+        streak: isSameDay ? prevStreak : isConsecutiveDay ? prevStreak + 1 : 1,
+        dailyProgressMinutes: prevDailyMinutes + sessionMinutes,
+        dailyXpToday: prevDailyXp + xpGain,
+        dailyScenariosToday: prevDailyScenarios + 1,
+        lessonsCompleted: prevLessons + 1,
+        totalTimeHours: Number((prevHours + sessionMinutes / 60).toFixed(2)),
+        lastPracticeDateKey: todayKey,
+        lastPracticeAt: now,
+      };
+    }
+
+    const { error: updateError } = await supabase.from('profiles').update(updates).eq('id', user.id);
 
     if (updateError) {
       throw updateError;

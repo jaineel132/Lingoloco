@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import styles from './TopNav.module.css';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -8,7 +8,22 @@ import { useSupabaseAuth } from './AuthProvider';
 
 export default function TopNav() {
   const router = useRouter();
-  const { user, loading, signOut } = useSupabaseAuth();
+  const { user, loading, accessToken, signOut } = useSupabaseAuth();
+  const [targetLang, setTargetLang] = useState('es');
+
+  useEffect(() => {
+    if (!accessToken) return;
+    fetch('/api/dashboard', {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      cache: 'no-store',
+    })
+      .then((res) => res.json())
+      .then((json) => {
+        const lang = json?.data?.targetLanguage || 'es';
+        setTargetLang(lang);
+      })
+      .catch(() => {});
+  }, [accessToken]);
 
   const handleLogout = async () => {
     try {
@@ -33,7 +48,7 @@ export default function TopNav() {
         <Link href="/learn">Learn</Link>
         <Link href="/compete">Compete</Link>
         <Link href="/chat">Chat</Link>
-        <Link href="/dashboard/es">Dashboard</Link>
+        <Link href={`/dashboard/${targetLang}`}>Dashboard</Link>
       </div>
       
       <div className={styles.rightLinks}>
