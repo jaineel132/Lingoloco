@@ -40,6 +40,7 @@ export default function LanguageOnboarding() {
   });
   const [isCheckingProfile, setIsCheckingProfile] = useState(true);
   const [profileData, setProfileData] = useState<any>(null);
+  const [onboardingCompleted, setOnboardingCompleted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -54,11 +55,19 @@ export default function LanguageOnboarding() {
       }
 
       try {
-        const response = await fetch('/api/dashboard', withSupabaseAuthHeaders(accessToken, { cache: 'no-store' }));
-        const json = await response.json();
+        // Check if onboarding is actually completed (onboarding_profiles row exists)
+        const onboardingRes = await fetch('/api/user/profile', withSupabaseAuthHeaders(accessToken, { cache: 'no-store' }));
+        const onboardingJson = await onboardingRes.json();
+        const hasOnboarding = onboardingJson?.success && onboardingJson?.data?.courseId;
+        setOnboardingCompleted(hasOnboarding);
 
-        if (json?.success && json?.data) {
-          setProfileData(json.data);
+        if (hasOnboarding) {
+          // Fetch full profile data for roadmap display
+          const response = await fetch('/api/dashboard', withSupabaseAuthHeaders(accessToken, { cache: 'no-store' }));
+          const json = await response.json();
+          if (json?.success && json?.data) {
+            setProfileData(json.data);
+          }
         }
       } catch (error) {
         console.error('Failed to load roadmap profile:', error);
@@ -95,7 +104,7 @@ export default function LanguageOnboarding() {
     );
   }
 
-  if (profileData) {
+  if (onboardingCompleted && profileData) {
     return (
       <div className={styles.container} style={{ paddingTop: '8rem', ['--theme-color' as any]: themeColor }}>
         <div className={styles.roadmapShell}>

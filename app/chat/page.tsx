@@ -33,6 +33,49 @@ const LANGUAGE_NAMES: Record<string, string> = {
   hi: 'Hindi',
 };
 
+const INITIAL_GREETINGS: Record<string, { text: string; translation: string }> = {
+  es: {
+    text: 'Hola! Soy tu tutor de espanol. Cuentame sobre tu dia y te ayudare a mejorar.',
+    translation: "Hello! I am your Spanish tutor. Tell me about your day and I will help you improve.",
+  },
+  fr: {
+    text: "Bonjour! Je suis votre professeur de francais. Parlez-moi de votre journee et je vous aiderai a vous ameliorer.",
+    translation: "Hello! I am your French tutor. Tell me about your day and I will help you improve.",
+  },
+  ja: {
+    text: 'Konnichiwa! Watashi wa anata no Nihongo no sensei desu. Kyou no dekigoto o oshiete kudasai. Issho ni jouzu ni narimashou.',
+    translation: "Hello! I am your Japanese tutor. Tell me about your day and I will help you improve.",
+  },
+  de: {
+    text: 'Hallo! Ich bin dein Deutschlehrer. Erzaehle mir von deinem Tag und ich helfe dir, besser zu werden.',
+    translation: "Hello! I am your German tutor. Tell me about your day and I will help you improve.",
+  },
+  it: {
+    text: 'Ciao! Sono il tuo tutor di italiano. Raccontami della tua giornata e ti aiutero a migliorare.',
+    translation: "Hello! I am your Italian tutor. Tell me about your day and I will help you improve.",
+  },
+  kr: {
+    text: 'Annyeonghaseyo! Jeon dangsin-ui Hangugeo seonsaengnim-imnida. Oneur-ui ilsang-eul malssem-hae juseyo. Jeoneun dangsin-i deo jal hage dopge hasipsida.',
+    translation: "Hello! I am your Korean tutor. Tell me about your day and I will help you improve.",
+  },
+  zh: {
+    text: 'Nihao! Wo shi ni de hanyu jiaolian. Gaosu wo ni jintian de shenghuo, wo hui bangzhu ni tigao.',
+    translation: "Hello! I am your Chinese tutor. Tell me about your day and I will help you improve.",
+  },
+  pt: {
+    text: 'Ola! Sou seu tutor de portugues. Conte-me sobre o seu dia e vou ajuda-lo a melhorar.',
+    translation: "Hello! I am your Portuguese tutor. Tell me about your day and I will help you improve.",
+  },
+  ru: {
+    text: 'Zdravstvuyte! Ya vash prepodavatel russkogo yazyka. Rasskazhite mne o svoyom dne, i ya pomogu vam uluchshit svoi navyki.',
+    translation: "Hello! I am your Russian tutor. Tell me about your day and I will help you improve.",
+  },
+  hi: {
+    text: 'Namaste! Main aapki Hindi adhyapak hoon. Apne din ke baare mein bataayein aur main aapko behtar banane mein madad karoongi.',
+    translation: "Hello! I am your Hindi tutor. Tell me about your day and I will help you improve.",
+  },
+};
+
 export default function ChatPage() {
   const { user, loading, signInWithGoogle, accessToken } = useSupabaseAuth();
   const [targetLanguageCode, setTargetLanguageCode] = useState('es');
@@ -60,12 +103,13 @@ export default function ChatPage() {
           const langCode = data.targetLanguage || 'es';
           setTargetLanguageCode(langCode);
           setTargetLanguageName(LANGUAGE_NAMES[langCode] || 'Spanish');
+          const greeting = INITIAL_GREETINGS[langCode] || INITIAL_GREETINGS['es'];
           setMessages([
             {
               id: Date.now(),
               sender: 'ai',
-              text: `Hola! I am your ${LANGUAGE_NAMES[langCode] || 'Spanish'} tutor. Tell me about your day and I will help you improve.`,
-              translation: 'Hello! I am your language tutor. Tell me about your day and I will help you improve.',
+              text: greeting.text,
+              translation: greeting.translation,
               feedback: 'Try writing your first sentence now.',
               tip: 'Keep your first message short and simple.',
             },
