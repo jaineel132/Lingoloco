@@ -10,32 +10,11 @@ const supabaseAdmin = createSupabaseAdminClient();
 
 export async function POST(req: Request) {
   try {
-    // Verify the caller is authenticated
-    const authHeader = req.headers.get('authorization') || '';
-    const accessToken = authHeader.toLowerCase().startsWith('bearer ')
-      ? authHeader.slice(7).trim()
-      : '';
-
-    if (!accessToken) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const supabaseAuth = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-      auth: { persistSession: false },
-      global: { headers: { Authorization: `Bearer ${accessToken}` } },
-    });
-
-    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     const body = await req.json();
-    const { roomId, timeMs } = body;
-    const playerId = user.id;
+    const { roomId, playerId, timeMs } = body;
 
-    if (!roomId || typeof timeMs !== 'number') {
-      return NextResponse.json({ error: 'roomId and timeMs are required.' }, { status: 400 });
+    if (!roomId || !playerId || typeof timeMs !== 'number') {
+      return NextResponse.json({ error: 'roomId, playerId, and timeMs are required.' }, { status: 400 });
     }
 
     // Retrieve the current duel room state
